@@ -198,6 +198,16 @@
         a[f.key] = parts.length ? { type: 'propio', part: parts[0], parts, fromInst: null } : { type: 'falta', part: null, parts: [], fromInst: null };
       }
       for (const k of Object.keys(a)) if (!a[k].parts) a[k].parts = a[k].part ? [a[k].part] : [];
+      // "Añadir también": papeles relacionados que van en la misma carpeta (p. ej. el flautín con la flauta).
+      for (const f of folders) {
+        if (f.all || !f.also || !f.also.length) continue;
+        const set = new Set(f.also);
+        const cur = a[f.key];
+        const extra = w.parts.filter((p) => set.has(baseOf(p.inst)) && !cur.parts.includes(p));
+        if (!extra.length) continue;
+        cur.parts = cur.parts.concat(extra);
+        if (!cur.part) { cur.part = extra[0]; cur.type = 'propio'; }
+      }
     }
     return { folders, maxVoices, assignments };
   }

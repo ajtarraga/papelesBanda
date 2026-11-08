@@ -99,6 +99,9 @@
           Descartar las copias repetidas de un mismo papel dentro de un PDF</label>
         <label class="check"><input type="checkbox" id="opt-report" checked>
           Incluir informe del reparto (Informe.csv)</label>
+        <label class="field">Prefijo de las carpetas (opcional, p. ej. «SC»)
+          <input type="text" id="opt-prefix" value="" placeholder="Sin prefijo">
+          <span class="small help">Con prefijo, las carpetas se llaman «SC Cl 1» y el PDF con todas las obras «SC Cl 1.pdf».</span></label>
         <label class="field">Nombre del ZIP
           <input type="text" id="opt-zipname" value="Papeles banda"></label>
         <button id="btn-export" class="primary">Descargar ZIP</button>
@@ -113,8 +116,9 @@
           la voz que recibe: si una obra no tiene esa voz se usa otra voz del mismo instrumento, y si no tiene el
           instrumento, las alternativas que escribas detrás y después los sustitutos de la pestaña «Instrumentos»
           (misma familia y afinación).</p>
-        <p>Marca <strong>Todos los papeles</strong> para que la carpeta reciba todos los papeles de esos instrumentos,
-          con todas sus páginas (por ejemplo, Per: toda la percusión).</p>
+        <p><strong>Añadir también</strong>: papeles relacionados que se meten además en la carpeta cuando la obra los tiene
+          (por ejemplo, el flautín en Fl). Marca <strong>Todos los papeles</strong> para que la carpeta reciba todos los papeles
+          de esos instrumentos, con todas sus páginas (por ejemplo, Per: toda la percusión).</p>
       </div>
       <div class="toolbar">
         <button id="btn-add-folder">Añadir carpeta</button>

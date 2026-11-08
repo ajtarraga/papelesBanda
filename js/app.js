@@ -5,12 +5,12 @@
   const I = Instruments;
   const D = Distribute;
   const STORAGE_KEY = 'papelesBanda.catalog.v3';
-  const TEMPLATE_KEY = 'papelesBanda.template.v1';
+  const TEMPLATE_KEY = 'papelesBanda.template.v2';
   const MODE_KEY = 'papelesBanda.mode.v1';
 
   // Plantilla por defecto: las carpetas de la banda (como en el ejemplo).
   const DEFAULT_TEMPLATE = [
-    { name: 'Fl', insts: ['flauta'], voice: 1, all: false },
+    { name: 'Fl', insts: ['flauta'], voice: 1, all: false, also: ['flautin'] },
     { name: 'Ob', insts: ['oboe'], voice: 1, all: false },
     { name: 'Cl 1', insts: ['clarinete'], voice: 1, all: false },
     { name: 'Cl 2', insts: ['clarinete'], voice: 2, all: false },
@@ -126,7 +126,8 @@
     if (!f.name) return '';
     if (f.all) return (f.insts || []).map(instName).join(', ');
     const alt = (f.extraSubs || []).length ? ` (o ${f.extraSubs.map(instName).join(', ')})` : '';
-    return instName(f.inst) + (f.shownVoice ? ` ${f.shownVoice}º` : '') + alt;
+    const also = (f.also || []).length ? ` + ${f.also.map(instName).join(', ')}` : '';
+    return instName(f.inst) + (f.shownVoice ? ` ${f.shownVoice}º` : '') + alt + also;
   }
 
   function hueFor(id) {
@@ -216,7 +217,7 @@
     const s = arr.slice().sort((a, b) => a - b);
     return s.length ? s[Math.floor((s.length - 1) / 2)] : 0;
   };
-  const stripExt = (name) => name.replace(/\.pdf$/i, '');
+  const stripExt = (name) => name.replace(/\.\s*pdf$/i, '').trim();
 
   /*
    * Agrupa los archivos en obras:
@@ -245,8 +246,8 @@
     const loose = [];
     for (const e of list.slice().sort(byPath)) {
       const rest = dirsOf(e).slice(common.length);
-      if (rest.length) add(`d:${rest[0]}`, rest[0], e);
-      else if (common.length && !hasSub) add('d:', common[common.length - 1], e);
+      if (rest.length) add(`d:${rest[0]}`, stripExt(rest[0]), e);
+      else if (common.length && !hasSub) add('d:', stripExt(common[common.length - 1]), e);
       else loose.push(e);
     }
     if (loose.length > 1 && !hasSub && median(loose.map((e) => e.pdf.numPages)) <= 4) {
@@ -913,14 +914,25 @@
       .filter((t) => t.insts && t.insts.length && t.name)
       .map((t, i) => ({
         key: `t${i}`, name: t.name, inst: t.insts[0], voice: t.all ? null : (t.voice || 1), shownVoice: t.voice, all: !!t.all,
-        insts: t.insts.slice(), extraSubs: t.insts.slice(1),
+        insts: t.insts.slice(), extraSubs: t.insts.slice(1), also: (t.also || []).slice(),
       }));
+  }
+
+  // Si el guion viene en varios archivos del mismo tamaño de papel distinto (A4 y A3), se usa el A4.
+  function pickGuion(w, parts) {
+    const whole = parts.filter((p) => p.whole);
+    if (whole.length < 2) return parts;
+    const sizeOf = (p) => { const m = I.normalize(w.files[p.fileIdx].name).match(/(?:^|[^a-z0-9])a([345])(?![0-9])/); return m ? m[1] : null; };
+    const sized = whole.filter((p) => sizeOf(p));
+    if (sized.length < 2) return parts;
+    const keep = sized.find((p) => sizeOf(p) === '4') || sized[0];
+    return parts.filter((p) => !sized.includes(p) || p === keep);
   }
 
   function buildPlan() {
     const works = state.works.map((w) => {
       const all = getParts(w);
-      return { id: w.id, name: w.name, parts: all.filter((p) => p.inst !== I.GUION_ID), guion: all.filter((p) => p.inst === I.GUION_ID) };
+      return { id: w.id, name: w.name, parts: all.filter((p) => p.inst !== I.GUION_ID), guion: pickGuion(w, all.filter((p) => p.inst === I.GUION_ID)) };
     });
     const template = state.mode === 'plantilla';
     const plan = D.computePlan(works, state.catalog, { folders: template ? templateFolders() : undefined });
@@ -1088,6 +1100,8 @@
       const report = $('#opt-report').checked;
       const guiones = $('#opt-guiones').checked;
       const zipName = safeName($('#opt-zipname').value || 'Papeles banda');
+      const prefix = safeName($('#opt-prefix').value || '').replace(/^sin nombre$/, '');
+      const withPrefix = (name) => (prefix ? `${prefix} ${name}` : name);
       const zip = new JSZip();
       const root = zip.folder(zipName);
       const worksById = Object.fromEntries(state.works.map((w) => [w.id, w]));
@@ -1127,7 +1141,7 @@
       let done = 0;
 
       for (const f of plan.folders) {
-        const folderName = plan.template ? safeName(f.name) : `${String(f.order).padStart(pad, '0')} ${safeName(folderLabel(f))}`;
+        const folderName = withPrefix(plan.template ? safeName(f.name) : `${String(f.order).padStart(pad, '0')} ${safeName(folderLabel(f))}`);
         const folder = root.folder(folderName);
         const used = new Set();
         const bookDoc = book ? await PDFLib.PDFDocument.create() : null;
@@ -1153,14 +1167,16 @@
         if (bookDoc && bookDoc.getPageCount()) {
           bookDoc.setTitle(`${folderLabel(f)} - Todas las obras`);
           addOutline(bookDoc, bookmarks);
-          folder.file(uniqueName(used, `00 ${folderLabel(f)} - Todas las obras.pdf`, ''), await bookDoc.save());
+          // Con prefijo, como en el ejemplo: "SC Cl 1/SC Cl 1.pdf"; sin prefijo: "00 Cl 1 - Todas las obras.pdf".
+          const bookName = prefix ? `${withPrefix(folderLabel(f))}.pdf` : `00 ${folderLabel(f)} - Todas las obras.pdf`;
+          folder.file(uniqueName(used, bookName, ''), await bookDoc.save());
         }
         done++;
         setStatus(status, `Generando carpetas… ${done} de ${plan.folders.length}`);
       }
 
       if (guiones) {
-        const gf = root.folder('Guiones');
+        const gf = root.folder(withPrefix('Guiones'));
         const used = new Set();
         for (const w of plan.works) {
           if (!w.guion.length) continue;
@@ -1220,7 +1236,7 @@
     const table = $('#tpl-table');
     table.innerHTML = '';
     table.appendChild(h('thead', null, h('tr', null,
-      ['Carpeta', 'Instrumento (y alternativas si falta)', 'Voz', 'Todos los papeles', ''].map((t) => h('th', null, t)))));
+      ['Carpeta', 'Instrumento (y alternativas si falta)', 'Voz', 'Añadir también', 'Todos los papeles', ''].map((t) => h('th', null, t)))));
     const tbody = h('tbody');
     state.template.forEach((t, i) => {
       const warn = h('div', { class: 'warn' });
@@ -1243,6 +1259,18 @@
             },
           }), warn),
         h('td', null, voiceInput),
+        h('td', null, h('input', {
+          value: (t.also || []).map(instName).join(', '),
+          placeholder: 'p. ej. Flautín',
+          title: 'Papeles relacionados que también van a esta carpeta si la obra los tiene',
+          onchange: (e) => {
+            const { ids, missing } = namesToIds(e.target.value);
+            t.also = ids;
+            saveTemplate();
+            e.target.value = t.also.map(instName).join(', ');
+            warn.textContent = missing.length ? `No encontrados: ${missing.join(', ')} (añádelos en «Instrumentos»)` : '';
+          },
+        })),
         h('td', null, h('input', {
           type: 'checkbox', checked: !!t.all, style: 'width:auto',
           title: 'Mete en la carpeta todos los papeles de estos instrumentos (todas las voces y páginas)',
@@ -1380,5 +1408,5 @@
 
 
   // Exponer para pruebas automáticas
-  window.__papeles = { state, getParts, buildPlan, redetect };
+  window.__papeles = { state, getParts, buildPlan, redetect, addEntries };
 })();

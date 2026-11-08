@@ -199,3 +199,55 @@ test('plantilla de la banda', () => {
   assert.equal(R.Cl2.type, 'voz'); // Clarinete 2 ← Clarinete 1
   assert.deepEqual(R.Per.parts.map((p) => p.inst), ['timbales']);
 });
+
+test('nombres de archivo del segundo ejemplo', () => {
+  const f = (n) => I.parseFileName(n, cat);
+  assert.deepEqual(f('Clarinete 1º.pdf'), { id: 'clarinete', voices: [1], solo: false });
+  assert.deepEqual(f('Trompeta 2ª.pdf'), { id: 'trompeta', voices: [2], solo: false });
+  assert.deepEqual(f('Trompa Fa.pdf'), { id: 'trompa', voices: [], solo: false });
+  assert.equal(f('Saxo Alto.pdf').id, 'saxo_alto');
+  assert.equal(f('Saxo Barítono.pdf').id, 'saxo_baritono');
+  assert.deepEqual(f('18 Intermedio - Trombón  2.pdf'), { id: 'trombon', voices: [2], solo: false });
+  assert.deepEqual(f('15 Intermedio08 - Trompeta 1en Sib.pdf'), { id: 'trompeta', voices: [1], solo: false });
+  assert.deepEqual(f('16 Intermedio - Trompeta 2-3 en Sib.pdf'), { id: 'trompeta', voices: [2, 3], solo: false });
+  assert.deepEqual(f('12 Intermedio - Trompa 1-2 en Fa.pdf'), { id: 'trompa', voices: [1, 2], solo: false });
+  assert.deepEqual(f('10 Intermedio - Saxo Tenor 1º-2º.pdf'), { id: 'saxo_tenor', voices: [1, 2], solo: false });
+  assert.deepEqual(f('04 Intermedio- Clarinete Pral en  Sib.pdf'), { id: 'clarinete', voices: [], solo: true });
+  assert.equal(f('03 Intermedio- Requinto en Mib.pdf').id, 'requinto');
+  assert.equal(f('02 Intermedio - Oboes..pdf').id, 'oboe');
+  assert.equal(f('01 Intermedio - Flautas..pdf').id, 'flauta');
+  assert.equal(f('14 Intermedio - Fliscornos.pdf').id, 'fliscorno');
+  assert.equal(f('20 Intermedio - Bombardinos en Do.pdf').id, 'bombardino');
+  assert.equal(f('21 Intermedio- Bombardinos en Sib.pdf').id, 'bombardino_sib');
+  assert.equal(f('23 Intermedio - Violochelos.pdf').id, 'violonchelo');
+  assert.equal(f('24 Intermedio - Saxofón Soprano.pdf').id, 'saxo_soprano');
+  assert.equal(f('26 Intermedio - Clarinete Bajo.pdf').id, 'clarinete_bajo');
+  assert.deepEqual(f('07 Intermedio - Clarinete 3º en Sib.pdf'), { id: 'clarinete', voices: [3], solo: false });
+  assert.equal(f('00 Intermedio- Partitura A4.pdf').id, I.GUION_ID);
+  assert.equal(f('The Tempest_Guio.pdf').id, I.GUION_ID);
+  assert.equal(f('The Tempest_Instrumentacio.pdf'), null);
+  assert.equal(f('LOS CHICOS DEL CORO.pdf'), null);
+  assert.equal(f('1492 CONQUEST OF PARADISE.PDF'), null);
+  assert.equal(f('Memorias de Africa.pdf'), null);
+});
+
+test('cabeceras en neerlandés y catalán', () => {
+  assert.equal(det('FLUIT C 1 + II Flute OUT OF AFRICA').id, 'flauta');
+  assert.equal(det('Bb TENOR Tenor SAXOFOON').id, 'saxo_tenor');
+  assert.equal(det('Trombó 1').id, 'trombon');
+  assert.equal(det('Fiscorn 2').id, 'fliscorno');
+  assert.equal(det('Hoorn in F 1').id, 'trompa');
+  assert.equal(det('Bb CLARINETS').id, 'clarinete');
+});
+
+test('añadir también (flautín con la flauta)', () => {
+  const works = [{ id: 'M', parts: [part('flauta', [1, 2]), part('flautin', [])] }, { id: 'T', parts: [part('flauta', [])] }];
+  const plan = D.computePlan(works, cat, { folders: [{ key: 'Fl', inst: 'flauta', voice: 1, also: ['flautin'] }] });
+  assert.deepEqual(plan.assignments.M.Fl.parts.map((p) => p.inst), ['flauta', 'flautin']);
+  assert.deepEqual(plan.assignments.T.Fl.parts.map((p) => p.inst), ['flauta']);
+});
+
+test('plurales en inglés y voces "1 + II"', () => {
+  assert.equal(det('Eb ALTO SAXOPHONES THE TEMPEST').id, 'saxo_alto');
+  assert.deepEqual(det('FLUIT C 1 + II'), { id: 'flauta', voices: [1, 2] });
+});

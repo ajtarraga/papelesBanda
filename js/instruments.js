@@ -12,58 +12,59 @@
   // subs: sustitutos por orden de preferencia (misma familia y afinación).
   const DEFAULT_CATALOG = [
     { id: 'flautin', name: 'Flautín', family: 'Madera', tuning: 'C', clef: 'Sol',
-      aliases: ['flautin', 'piccolo', 'ottavino', 'petite flute'], subs: ['flauta', 'oboe'] },
+      aliases: ['flautin', 'piccolo', 'ottavino', 'petite flute', 'flauti', 'piccolo fluit', 'picc'], subs: ['flauta', 'oboe'] },
     { id: 'flauta', name: 'Flauta', family: 'Madera', tuning: 'C', clef: 'Sol',
-      aliases: ['flauta', 'flautas', 'flute', 'flutes', 'flauto', 'flauti', 'flote', 'grosse flote'], subs: ['flautin', 'oboe'] },
+      aliases: ['flauta', 'flautas', 'flute', 'flutes', 'flauto', 'flauti', 'flote', 'grosse flote', 'fluit', 'fluiten', 'fluit c'], subs: ['flautin', 'oboe'] },
     { id: 'oboe', name: 'Oboe', family: 'Madera', tuning: 'C', clef: 'Sol',
-      aliases: ['oboe', 'oboes', 'hautbois', 'oboi'], subs: ['flauta', 'flautin'] },
+      aliases: ['oboe', 'oboes', 'hautbois', 'oboi', 'hobo', 'hobos'], subs: ['flauta', 'flautin'] },
     { id: 'corno_ingles', name: 'Corno inglés', family: 'Madera', tuning: 'F', clef: 'Sol',
       aliases: ['corno ingles', 'english horn', 'cor anglais'], subs: ['trompa'] },
     { id: 'fagot', low: true, name: 'Fagot', family: 'Madera', tuning: 'C', clef: 'Fa',
-      aliases: ['fagot', 'fagots', 'bassoon', 'bassoons', 'fagotto', 'fagotti', 'basson', 'fagott'], subs: ['bombardino', 'trombon', 'tuba'] },
+      aliases: ['fagot', 'fagots', 'bassoon', 'bassoons', 'fagotto', 'fagotti', 'basson', 'fagott', 'fagotten'], subs: ['bombardino', 'trombon', 'tuba'] },
     { id: 'requinto', name: 'Requinto', family: 'Madera', tuning: 'Eb', clef: 'Sol',
-      aliases: ['requinto', 'clarinete en mib', 'clarinete mib', 'eb clarinet', 'clarinet in eb', 'clarinetto piccolo'],
+      aliases: ['requinto', 'requint', 'klarinet in es', 'es klarinet', 'clarinete en mib', 'clarinete mib', 'eb clarinet', 'clarinet in eb', 'clarinetto piccolo'],
       subs: ['saxo_alto', 'saxo_baritono'] },
     { id: 'clarinete', name: 'Clarinete', family: 'Madera', tuning: 'Bb', clef: 'Sol',
-      aliases: ['clarinete', 'clarinet', 'clarinetto', 'clarinette', 'clarinetes', 'clarinets', 'clarinetti', 'klarinette'],
+      aliases: ['clarinete', 'clarinet', 'clarinetto', 'clarinette', 'clarinetes', 'clarinets', 'clarinetti', 'klarinette', 'klarinet', 'klarinetten', 'clarinet sib'],
       subs: ['saxo_soprano', 'saxo_tenor', 'clarinete_bajo'] },
     { id: 'clarinete_alto', name: 'Clarinete alto', family: 'Madera', tuning: 'Eb', clef: 'Sol',
       aliases: ['clarinete alto', 'alto clarinet', 'clarinetto contralto', 'clarinette alto', 'altklarinette'],
       subs: ['saxo_alto', 'requinto', 'saxo_baritono'] },
     { id: 'clarinete_bajo', low: true, name: 'Clarinete bajo', family: 'Madera', tuning: 'Bb', clef: 'Sol',
-      aliases: ['clarinete bajo', 'bass clarinet', 'clarinetto basso', 'clarinette basse', 'bassklarinette', 'clarinete bajo en sib'],
+      aliases: ['clarinete bajo', 'bass clarinet', 'clarinetto basso', 'clarinette basse', 'bassklarinette', 'clarinete bajo en sib', 'basklarinet', 'clarinet baix', 'clarinete baixo', 'bass clarinets'],
       subs: ['saxo_tenor', 'clarinete', 'bombardino_sib'] },
     { id: 'saxo_soprano', name: 'Saxo soprano', family: 'Madera', tuning: 'Bb', clef: 'Sol',
-      aliases: ['saxo soprano', 'saxofon soprano', 'soprano sax', 'soprano saxophone', 'sax soprano', 'saxophone soprano', 'sassofono soprano', 'sopransaxophon'],
+      aliases: ['saxo soprano', 'saxofon soprano', 'soprano sax', 'soprano saxophone', 'soprano saxophones', 'sax soprano', 'saxophone soprano', 'sassofono soprano', 'sopransaxophon', 'sopraansaxofoon', 'saxo soprano sib'],
       subs: ['clarinete', 'saxo_tenor'] },
     { id: 'saxo_alto', name: 'Saxo alto', family: 'Madera', tuning: 'Eb', clef: 'Sol',
       aliases: ['saxo alto', 'saxofon alto', 'alto sax', 'alto saxophone', 'sax alto', 'saxofon mib alto', 'saxo mib',
-        'saxophone alto', 'sassofono contralto', 'sassofono alto', 'altsaxophon', 'saxos altos', 'saxofones altos'],
+        'saxophone alto', 'sassofono contralto', 'sassofono alto', 'altsaxophon', 'saxos altos', 'saxofones altos',
+        'altsaxofoon', 'alt saxofoon', 'saxo alt', 'saxofon alt', 'alto saxophones', 'alto saxes', 'alto saxs'],
       subs: ['saxo_baritono', 'requinto'] },
     { id: 'saxo_tenor', low: true, name: 'Saxo tenor', family: 'Madera', tuning: 'Bb', clef: 'Sol',
       aliases: ['saxo tenor', 'saxofon tenor', 'tenor sax', 'tenor saxophone', 'sax tenor', 'saxophone tenor',
-        'sassofono tenore', 'tenorsaxophon', 'saxos tenores', 'saxofones tenores'],
+        'sassofono tenore', 'tenorsaxophon', 'saxos tenores', 'saxofones tenores', 'tenorsaxofoon', 'tenor saxofoon', 'tenor saxophones', 'tenor saxes'],
       subs: ['clarinete_bajo', 'saxo_soprano', 'bombardino_sib', 'clarinete'] },
     { id: 'saxo_baritono', low: true, name: 'Saxo barítono', family: 'Madera', tuning: 'Eb', clef: 'Sol',
       aliases: ['saxo baritono', 'saxofon baritono', 'baritone sax', 'baritone saxophone', 'sax baritono', 'saxophone baryton',
-        'sassofono baritono', 'baritonsaxophon'],
+        'sassofono baritono', 'baritonsaxophon', 'baritonsaxofoon', 'bariton saxofoon', 'baritone saxophones'],
       subs: ['saxo_alto'] },
     { id: 'trompa', name: 'Trompa', family: 'Metal', tuning: 'F', clef: 'Sol',
-      aliases: ['trompa', 'trompas', 'horn in f', 'french horn', 'horn', 'horns', 'corno', 'corni', 'cor', 'trompa en fa'], subs: ['corno_ingles'] },
+      aliases: ['trompa', 'trompas', 'horn in f', 'french horn', 'horn', 'horns', 'corno', 'corni', 'cor', 'trompa en fa', 'hoorn', 'hoorns', 'hoorn in f'], subs: ['corno_ingles'] },
     { id: 'trompa_mib', name: 'Trompa Mi♭', family: 'Metal', tuning: 'Eb', clef: 'Sol',
       aliases: ['trompa en mib', 'trompa mib', 'trompas en mib', 'horn in eb', 'eb horn', 'alto horn', 'trompa mi b'],
       subs: ['saxo_alto'] },
     { id: 'fliscorno', name: 'Fliscorno', family: 'Metal', tuning: 'Bb', clef: 'Sol',
-      aliases: ['fliscorno', 'fliscornos', 'flugelhorn', 'flicorno', 'fiscorno', 'bugle', 'flicorno soprano'], subs: ['trompeta'] },
+      aliases: ['fliscorno', 'fliscornos', 'flugelhorn', 'flicorno', 'fiscorno', 'bugle', 'flicorno soprano', 'bugel', 'bugels', 'fiscorn', 'fiscorns'], subs: ['trompeta'] },
     { id: 'trompeta', name: 'Trompeta', family: 'Metal', tuning: 'Bb', clef: 'Sol',
-      aliases: ['trompeta', 'trompetas', 'trumpet', 'trumpets', 'tromba', 'trombe', 'trompette', 'trompete', 'cornetin', 'cornet'], subs: ['fliscorno'] },
+      aliases: ['trompeta', 'trompetas', 'trumpet', 'trumpets', 'tromba', 'trombe', 'trompette', 'trompete', 'cornetin', 'cornet', 'trompet', 'trompetten', 'kornet'], subs: ['fliscorno'] },
     { id: 'trombon', name: 'Trombón', family: 'Metal', tuning: 'C', clef: 'Fa',
-      aliases: ['trombon', 'trombones', 'trombone', 'tromboni', 'posaune'], subs: ['bombardino', 'trombon_bajo'] },
+      aliases: ['trombon', 'trombones', 'trombone', 'tromboni', 'posaune', 'trombo', 'trombons', 'trombonen'], subs: ['bombardino', 'trombon_bajo'] },
     { id: 'trombon_bajo', low: true, name: 'Trombón bajo', family: 'Metal', tuning: 'C', clef: 'Fa',
       aliases: ['trombon bajo', 'bass trombone', 'trombone basso', 'bassposaune'], subs: ['trombon', 'tuba', 'bombardino'] },
     { id: 'bombardino', low: true, name: 'Bombardino', family: 'Metal', tuning: 'C', clef: 'Fa',
       aliases: ['bombardino', 'bombardinos', 'euphonium', 'eufonio', 'baritono', 'baritone', 'bombardino en do', 'bombardino do',
-        'baritone b c', 'baritone bc', 'euphonium b c', 'euphonium bc', 'bombardino b c'],
+        'baritone b c', 'baritone bc', 'euphonium b c', 'euphonium bc', 'bombardino b c', 'bombardi', 'bombardins', 'bariton', 'euphoniums'],
       subs: ['trombon', 'fagot', 'tuba'] },
     { id: 'bombardino_sib', name: 'Bombardino Si♭', family: 'Metal', tuning: 'Bb', clef: 'Sol',
       aliases: ['bombardino en sib', 'bombardino sib', 'bombardino si b', 'euphonium in bb', 'euphonium bb',
@@ -71,28 +72,30 @@
         'bombardino t c', 'tenorhorn'],
       subs: ['saxo_tenor', 'fliscorno'] },
     { id: 'tuba', low: true, name: 'Tuba', family: 'Metal', tuning: 'C', clef: 'Fa',
-      aliases: ['tuba', 'tubas', 'helicon', 'sousafon', 'sousaphone', 'bajo en do', 'bajos'],
+      aliases: ['tuba', 'tubas', 'helicon', 'sousafon', 'sousaphone', 'bajo en do', 'bajos', 'tuba in c', 'tuba en do'],
       subs: ['trombon_bajo', 'bombardino', 'fagot'] },
     { id: 'contrabajo', low: true, name: 'Contrabajo', family: 'Cuerda', tuning: 'C', clef: 'Fa',
-      aliases: ['contrabajo', 'string bass', 'double bass', 'contrabbasso', 'contrebasse', 'kontrabass', 'electric bass', 'bajo electrico'], subs: ['tuba'] },
+      aliases: ['contrabajo', 'string bass', 'double bass', 'contrabbasso', 'contrebasse', 'kontrabass', 'electric bass', 'bajo electrico', 'contrabas', 'contrabaix', 'string bass'], subs: ['tuba'] },
     { id: 'violin', name: 'Violín', family: 'Cuerda', tuning: 'C', clef: 'Sol',
       aliases: ['violin', 'violines', 'violino', 'violini', 'violon', 'violine'], subs: [] },
+    { id: 'violonchelo', name: 'Violonchelo', family: 'Cuerda', tuning: 'C', clef: 'Fa',
+      aliases: ['violonchelo', 'violonchelos', 'violochelo', 'violochelos', 'violoncello', 'violoncelli', 'cello', 'cellos', 'chelo', 'chelos'], subs: [] },
     { id: 'txistu', name: 'Txistu', family: 'Madera', tuning: 'C', clef: 'Sol',
       aliases: ['txistu', 'txistus', 'chistu', 'chistus'], subs: [] },
     { id: 'timbales', name: 'Timbales', family: 'Percusión', tuning: 'perc', clef: 'Fa',
-      aliases: ['timbales', 'timpani', 'timbal', 'timbales sinfonicos', 'pauken'], subs: [] },
+      aliases: ['timbales', 'timpani', 'timbal', 'timbales sinfonicos', 'pauken', 'timbals', 'timbalen'], subs: [] },
     { id: 'laminas', name: 'Láminas', family: 'Percusión', tuning: 'C', clef: 'Sol',
       aliases: ['laminas', 'xilofono', 'xylophone', 'glockenspiel', 'lira', 'vibrafono', 'vibraphone',
-        'marimba', 'campanolo', 'mallets', 'carillon', 'mallet percussion', 'mallet perc', 'orchestra bells', 'chimes', 'campanas tubulares', 'campanas', 'campanolo'], subs: [] },
+        'marimba', 'campanolo', 'mallets', 'carillon', 'mallet percussion', 'mallet perc', 'orchestra bells', 'chimes', 'campanas tubulares', 'campanas', 'campanolo', 'klokkenspel', 'klokken', 'xylofoon', 'vibrafoon', 'campanes'], subs: [] },
     { id: 'caja', name: 'Caja', family: 'Percusión', tuning: 'perc', clef: 'Perc.',
-      aliases: ['caja', 'redoblante', 'snare drum', 'snare', 'tambor'], subs: ['percusion'] },
+      aliases: ['caja', 'redoblante', 'snare drum', 'snare', 'tambor', 'caixa', 'kleine trom', 'snaredrum'], subs: ['percusion'] },
     { id: 'bombo', name: 'Bombo', family: 'Percusión', tuning: 'perc', clef: 'Perc.',
-      aliases: ['bombo', 'bass drum', 'bombo y platos', 'bombo platos'], subs: ['platos', 'percusion'] },
+      aliases: ['bombo', 'bass drum', 'bombo y platos', 'bombo platos', 'grote trom', 'bassdrum'], subs: ['platos', 'percusion'] },
     { id: 'platos', name: 'Platos', family: 'Percusión', tuning: 'perc', clef: 'Perc.',
-      aliases: ['platos', 'cymbals', 'plato', 'crash cymbals'], subs: ['bombo', 'percusion'] },
+      aliases: ['platos', 'cymbals', 'plato', 'crash cymbals', 'plats', 'bekkens', 'bekken'], subs: ['bombo', 'percusion'] },
     { id: 'percusion', name: 'Percusión', family: 'Percusión', tuning: 'perc', clef: 'Perc.',
       aliases: ['percusion', 'percussion', 'bateria', 'drum set', 'drumset', 'accesorios', 'percussioni', 'percussions', 'schlagzeug', 'auxiliary percussion',
-        'pandereta', 'almirez', 'triangulo', 'triangle', 'castanuelas', 'cascabeles', 'sleigh bells', 'tambourine',
+        'pandereta', 'almirez', 'slagwerk', 'percussio', 'percussions', 'percu', 'drums', 'triangulo', 'triangle', 'castanuelas', 'cascabeles', 'sleigh bells', 'tambourine',
         'claves', 'maracas', 'zambomba', 'gong', 'tam tam', 'carraca', 'woodblock', 'caja china'], subs: ['caja', 'bombo', 'platos'] },
   ];
 
@@ -119,7 +122,7 @@
       .replace(/[̀-ͯ]/g, '')
       .toLowerCase()
       .replace(/[º°]/g, 'º')
-      .replace(/[^a-z0-9ºª\/\-&,\s]/g, ' ')
+      .replace(/[^a-z0-9ºª\/\-&,+\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
   }
@@ -309,10 +312,10 @@
     per: 'percusion', perc: 'percusion', timb: 'timbales', lam: 'laminas', xil: 'laminas',
     vl: 'violin', vln: 'violin', vn: 'violin', cb: 'contrabajo',
   };
-  const SAX_WORDS = new Set(['sax', 'saxo', 'saxos', 'saxofon', 'saxofones', 'saxophone', 'saxophones']);
+  const SAX_WORDS = new Set(['sax', 'saxo', 'saxos', 'saxofon', 'saxofones', 'saxophone', 'saxophones', 'saxofoon', 'saxofoons']);
   const SAX_KIND = { a: 'saxo_alto', alto: 'saxo_alto', altos: 'saxo_alto', t: 'saxo_tenor', tenor: 'saxo_tenor', tenores: 'saxo_tenor',
     b: 'saxo_baritono', bar: 'saxo_baritono', bari: 'saxo_baritono', baritono: 'saxo_baritono', baritone: 'saxo_baritono',
-    s: 'saxo_soprano', sop: 'saxo_soprano', soprano: 'saxo_soprano' };
+    s: 'saxo_soprano', sop: 'saxo_soprano', soprano: 'saxo_soprano', alt: 'saxo_alto', sopraan: 'saxo_soprano', bariton: 'saxo_baritono' };
   const GUION_WORDS = new Set(['guion', 'guiones', 'director', 'score', 'conductor', 'partitura', 'general', 'full']);
 
   /**
@@ -322,10 +325,11 @@
   function parseFileName(fileName, catalog, matchers) {
     const base = String(fileName || '').replace(/\.[a-z0-9]+$/i, '');
     const tokens = normalize(base.replace(/([a-zA-Z])(\d)/g, '$1 $2').replace(/(\d)([a-zA-Z])/g, '$1 $2'))
-      .split(/[^a-z0-9º]+/).filter(Boolean);
+      .split(/[^a-z0-9ºª]+/).map((t) => t.replace(/^(\d+)[ºª]$/, '$1')).filter(Boolean);
     if (!tokens.length) return null;
-    if (tokens.some((t) => t === 'guion' || t === 'guiones' || t === 'conductor') ||
-        (tokens.includes('score') && tokens.includes('full')) || (tokens.includes('partitura') && tokens.includes('general'))) {
+    // Guion del director: guion, guió (catalán), conductor, partitura, full score...
+    if (tokens.some((t) => ['guion', 'guiones', 'guio', 'guions', 'conductor', 'partitura', 'partituur', 'directie', 'direccion'].includes(t)) ||
+        (tokens.includes('score') && tokens.includes('full'))) {
       return { id: GUION_ID, voices: [], solo: false };
     }
     let id = null;

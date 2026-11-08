@@ -31,6 +31,13 @@ Funciona entera en el navegador: los PDF **no se suben a ningún servidor**.
    `Informe.csv` y, en cada carpeta, un **único PDF con todas las obras** (`00 Cl 1 - Todas las obras.pdf`, con un
    marcador por obra; se puede desactivar).
 
+En Exportar se puede poner un **prefijo** (p. ej. «SC»): las carpetas se llaman «SC Cl 1», «SC Guiones»… y el PDF
+con todas las obras de cada carpeta «SC Cl 1.pdf». Si una obra trae el guion en A4 y en A3, se usa el A4.
+
+Los nombres de instrumento se reconocen en español, inglés, catalán, italiano, francés, alemán y neerlandés
+(«Fluit», «Saxofoon», «Trombó», «Fiscorn», «Guió»…), con abreviaturas y números de orden en el nombre del archivo
+(«18 Intermedio - Trombón 2.pdf»).
+
 **Los PDF no se modifican**: un papel que es un archivo entero se copia tal cual (mismos bytes y nombre; si dos obras
 tienen el mismo nombre de archivo se añade el nombre de la obra). De un PDF con todos los papeles solo se extraen las
 páginas de cada instrumento, **todas** (un papel de varias páginas sale completo) a un PDF con el nombre de la obra.
@@ -40,7 +47,8 @@ páginas de cada instrumento, **todas** (un papel de varias páginas sale comple
 La pestaña **Mi banda** define las carpetas del ZIP. Por defecto: Fl, Ob, Cl 1, Cl 2, Cl B, SA, ST, Trp (trompa),
 Trpt (trompeta), Tbn, Bno, Tb y Per. Cada carpeta recibe un instrumento y una voz (Cl 2 = clarinete 2º, que también
 cubre un papel «2º y 3º»); **Per** tiene marcado «Todos los papeles» y recibe toda la percusión (caja, pandereta,
-timbales, láminas…) con todas sus páginas. Se pueden añadir, quitar y renombrar carpetas. En «Reparto» se puede
+timbales, láminas…) con todas sus páginas. **Añadir también** mete papeles relacionados en la misma carpeta
+cuando la obra los tiene (por defecto, el flautín va con la flauta en Fl). Se pueden añadir, quitar y renombrar carpetas. En «Reparto» se puede
 cambiar al modo **automático** (una carpeta por voz, hasta el máximo de voces entre todas las obras).
 
 ## Reglas del reparto
