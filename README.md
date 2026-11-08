@@ -15,28 +15,38 @@ Funciona entera en el navegador: los PDF **no se suben a ningún servidor**.
 
 ## Cómo usarla
 
-1. **Cargar y revisar**: arrastra los PDF. Cada página se asigna a un instrumento y voz:
-   - Si el PDF tiene texto, se lee la cabecera (p. ej. «Clarinete 2º en Sib»).
-   - Si es **escaneado**, se reconoce el texto con **OCR** (español e inglés).
-   - La **portada** («Conductor», «Guion»…) y la **partitura general del director** se ignoran solas
-     (se reconoce por la densidad de pentagramas).
-   - Las **copias repetidas** del mismo papel se detectan comparando la imagen y se descartan
-     («Copia de la pág. N»; botón «No es copia» si se equivoca).
-   - Los papeles **solistas** («Solo Flute», «Trompeta solista») van a su propia carpeta.
-   - Las páginas sin cabecera heredan la asignación de la anterior (segundas páginas de un papel). Si una
-     página tiene el título de la obra pero no se lee el instrumento, queda «sin reconocer» para que la asignes.
+1. **Cargar y revisar**: arrastra las obras o pulsa «Elegir carpeta». Se admiten:
+   - **Una carpeta por obra** con un PDF por papel (`clte-1.pdf`, `tpa-1-f.pdf`, `BAJOS.pdf`, `guion.pdf`…).
+     El papel se reconoce por el **nombre del archivo** (abreviaturas habituales: `clte`, `tpa`, `tpta`, `tbon`,
+     `bdino`, `sax-a`, `sax-t`, `flis`…; `tpa-1-e` = trompa en Mi♭, `tpa-1-f` = en Fa, `bdino-1-c` = bombardino en Do,
+     `bdino-1-b` = en Si♭). Si el nombre no dice nada (`7.pdf`), se lee el contenido.
+   - **Un PDF con todos los papeles** de una obra: se lee la cabecera de cada página (con **OCR** si está escaneado).
+   - **Una carpeta con varias obras** (subcarpetas y PDF sueltos): cada subcarpeta y cada PDF suelto es una obra.
+   La portada «Conductor» y la **partitura general** se reconocen solas y van al **guion del director**.
+   Las copias repetidas del mismo papel dentro de un PDF se descartan («No es copia» si se equivoca).
    Revisa las miniaturas (clic para ampliar) y corrige lo necesario.
 2. **Reparto**: tabla con todas las carpetas y lo que recibe cada una en cada obra. Cualquier casilla se
-   puede cambiar a mano.
-3. **Exportar**: descarga un ZIP con las carpetas (`01 Flauta/Obra A.pdf`, `05 Clarinete 3º/Obra B.pdf`…),
-   un informe `Informe.csv` y, en cada carpeta, un **único PDF con todas las obras de esa voz**
-   (`00 Clarinete 1º - Todas las obras.pdf`, con un marcador por obra). Esta opción viene marcada y se
-   puede desactivar; los PDF por obra se mantienen siempre.
+   puede cambiar a mano. Debajo se avisa de los papeles que no van a ninguna carpeta.
+3. **Exportar**: descarga un ZIP con una carpeta por sección de la banda, la carpeta **Guiones**, un informe
+   `Informe.csv` y, en cada carpeta, un **único PDF con todas las obras** (`00 Cl 1 - Todas las obras.pdf`, con un
+   marcador por obra; se puede desactivar).
+
+**Los PDF no se modifican**: un papel que es un archivo entero se copia tal cual (mismos bytes y nombre; si dos obras
+tienen el mismo nombre de archivo se añade el nombre de la obra). De un PDF con todos los papeles solo se extraen las
+páginas de cada instrumento, **todas** (un papel de varias páginas sale completo) a un PDF con el nombre de la obra.
+
+## Mi banda (carpetas)
+
+La pestaña **Mi banda** define las carpetas del ZIP. Por defecto: Fl, Ob, Cl 1, Cl 2, Cl B, SA, ST, Trp (trompa),
+Trpt (trompeta), Tbn, Bno, Tb y Per. Cada carpeta recibe un instrumento y una voz (Cl 2 = clarinete 2º, que también
+cubre un papel «2º y 3º»); **Per** tiene marcado «Todos los papeles» y recibe toda la percusión (caja, pandereta,
+timbales, láminas…) con todas sus páginas. Se pueden añadir, quitar y renombrar carpetas. En «Reparto» se puede
+cambiar al modo **automático** (una carpeta por voz, hasta el máximo de voces entre todas las obras).
 
 ## Reglas del reparto
 
-- Para cada instrumento se busca el **máximo número de voces entre todas las obras**: si alguna obra
-  tiene Clarinete 4º, se crean las carpetas Clarinete 1º a 4º.
+- En modo automático, para cada instrumento se busca el **máximo número de voces entre todas las obras**: si
+  alguna obra tiene Clarinete 4º, se crean las carpetas Clarinete 1º a 4º.
 - Si una obra **no tiene una voz** (p. ej. Clarinete 3º), se le da otra voz del mismo instrumento,
   repartida de forma **equilibrada**: dentro de la obra no se carga dos veces la misma voz mientras haya
   otra libre, y entre obras se **rota** (en una obra el 3º recibe el 2º, en la siguiente el 1º…).
@@ -49,7 +59,6 @@ Funciona entera en el navegador: los PDF **no se suben a ningún servidor**.
 - Los instrumentos marcados como **graves** (clarinete bajo, saxo barítono, tuba…) toman la voz más grave
   del sustituto (Clarinete bajo ← Clarinete 3º).
 - Los papeles solistas no se sustituyen: si una obra no tiene solista, esa carpeta se queda sin papel.
-- Los papeles sustituidos llevan una nota en el pie: «Fliscorno 2º: se toca el papel de Trompeta 2º».
 
 La pestaña **Instrumentos** permite editar nombres, familias, afinaciones, los textos que se buscan en las
 cabeceras y la lista de sustitutos. Los cambios se guardan en el navegador.

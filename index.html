@@ -20,29 +20,37 @@
       <button class="tab active" data-view="cargar" role="tab">1 · Cargar y revisar</button>
       <button class="tab" data-view="reparto" role="tab">2 · Reparto</button>
       <button class="tab" data-view="exportar" role="tab">3 · Exportar</button>
-      <button class="tab secondary" data-view="instrumentos" role="tab">Instrumentos</button>
+      <button class="tab secondary" data-view="banda" role="tab">Mi banda</button>
+      <button class="tab" data-view="instrumentos" role="tab">Instrumentos</button>
     </nav>
   </header>
 
   <main>
     <!-- 1. CARGAR Y REVISAR -->
     <section id="view-cargar" class="view active">
-      <label id="dropzone" class="dropzone">
+      <div id="dropzone" class="dropzone" role="button" tabindex="0">
         <input id="file-input" type="file" accept="application/pdf,.pdf" multiple hidden>
-        <strong>Arrastra aquí los guiones en PDF</strong>
-        <span>o haz clic para elegirlos (un PDF por obra, con los papeles seguidos)</span>
-      </label>
+        <input id="dir-input" type="file" webkitdirectory directory multiple hidden>
+        <strong>Arrastra aquí las obras: carpetas o PDF</strong>
+        <span>Cada carpeta es una obra (un PDF por papel, guion…). Un PDF suelto con todos los papeles también es una obra.
+          Puedes soltar una carpeta que contenga varias obras.</span>
+        <div class="dz-buttons">
+          <button type="button" id="btn-dir" class="primary">Elegir carpeta</button>
+          <button type="button" id="btn-files">Elegir PDF</button>
+        </div>
+      </div>
       <label class="check inline"><input type="checkbox" id="opt-ocr" checked>
         Reconocer el texto de las páginas escaneadas (OCR) para detectar el instrumento</label>
       <div id="load-status" class="status" hidden></div>
 
       <div class="help" id="help-cargar">
-        <p>Cada página se asigna a un instrumento y voz leyendo su cabecera. Las páginas sin cabecera
-          <em>heredan</em> la asignación de la anterior. Revisa y corrige lo necesario: al cambiar una página,
-          las siguientes páginas heredadas cambian con ella.</p>
-        <p>Voz: escribe <code>1</code>, <code>2</code>, <code>2-3</code>, <code>1 y 2</code>… o déjala vacía si
-          es un papel único para todo el instrumento. Usa <em>Ignorar</em> para portadas, guion de director
-          o copias repetidas.</p>
+        <p>Los papeles sueltos se reconocen por el <strong>nombre del archivo</strong> (<code>clte-1</code>,
+          <code>tpa-1-f</code>, <code>sax-a-1</code>, <code>BAJOS</code>…) y, si el nombre no dice nada (<code>7.pdf</code>),
+          por su contenido. En los PDF con todos los papeles se lee la cabecera de cada página; las páginas sin
+          cabecera <em>heredan</em> la asignación de la anterior. La partitura general y la portada «Conductor»
+          van al <strong>guion del director</strong>.</p>
+        <p>Voz: escribe <code>1</code>, <code>2</code>, <code>2-3</code>, <code>1 y 2</code>, <code>solo</code>… o déjala
+          vacía si es un papel único. Usa <em>Ignorar</em> para páginas que no quieras en ninguna carpeta.</p>
       </div>
 
       <div id="works"></div>
@@ -59,12 +67,18 @@
           <span class="cell-falta badge">Sin papel</span>
           <span class="cell-manual badge">Elegido a mano</span>
         </div>
-        <p class="help small">Se crea una carpeta por cada voz hasta el máximo encontrado entre todas las obras.
-          Puedes cambiar cualquier casilla con su desplegable.</p>
+        <label class="field inline-field">Carpetas
+          <select id="plan-mode">
+            <option value="plantilla">Las carpetas de mi banda (pestaña «Mi banda»)</option>
+            <option value="auto">Automático: una carpeta por voz, hasta el máximo de voces entre todas las obras</option>
+          </select>
+        </label>
+        <p class="help small">Puedes cambiar cualquier casilla con su desplegable.</p>
         <div id="plan-summary" class="summary"></div>
         <div class="table-scroll">
           <table id="plan-table" class="plan"></table>
         </div>
+        <div id="plan-unused" class="unused" hidden></div>
       </div>
     </section>
 
@@ -72,19 +86,42 @@
     <section id="view-exportar" class="view">
       <div class="card export">
         <h2>Descargar carpetas</h2>
-        <p>Se genera un ZIP con una carpeta por instrumento y voz, y dentro un PDF por obra.</p>
-        <label class="check"><input type="checkbox" id="opt-stamp" checked>
-          Marcar en el pie los papeles sustituidos (p. ej. «Papel de Trompeta 2º»)</label>
+        <p>Se genera un ZIP con una carpeta por instrumento y, dentro, el papel de cada obra.
+          <strong>Los PDF no se modifican</strong>: los papeles sueltos se copian tal cual (mismo archivo y nombre) y de los
+          PDF con todos los papeles solo se extraen las páginas de cada instrumento.</p>
+        <label class="check"><input type="checkbox" id="opt-guiones" checked>
+          Incluir la carpeta <strong>Guiones</strong> con el guion del director de cada obra</label>
         <label class="check"><input type="checkbox" id="opt-book" checked>
           <span>Añadir en cada carpeta <strong>un único PDF con todas las obras</strong> de esa voz
-            (<em>00 Clarinete 1º - Todas las obras.pdf</em>), con un marcador por obra.
+            (<em>00 Cl 1 - Todas las obras.pdf</em>), con un marcador por obra.
             Los PDF de cada obra por separado se mantienen.</span></label>
+        <label class="check"><input type="checkbox" id="opt-dedupe" checked>
+          Descartar las copias repetidas de un mismo papel dentro de un PDF</label>
         <label class="check"><input type="checkbox" id="opt-report" checked>
           Incluir informe del reparto (Informe.csv)</label>
         <label class="field">Nombre del ZIP
           <input type="text" id="opt-zipname" value="Papeles banda"></label>
         <button id="btn-export" class="primary">Descargar ZIP</button>
         <div id="export-status" class="status" hidden></div>
+      </div>
+    </section>
+
+    <!-- MI BANDA -->
+    <section id="view-banda" class="view">
+      <div class="help">
+        <p>Las carpetas que tendrá el ZIP (además de <strong>Guiones</strong>). Para cada carpeta indica el instrumento y
+          la voz que recibe: si una obra no tiene esa voz se usa otra voz del mismo instrumento, y si no tiene el
+          instrumento, las alternativas que escribas detrás y después los sustitutos de la pestaña «Instrumentos»
+          (misma familia y afinación).</p>
+        <p>Marca <strong>Todos los papeles</strong> para que la carpeta reciba todos los papeles de esos instrumentos,
+          con todas sus páginas (por ejemplo, Per: toda la percusión).</p>
+      </div>
+      <div class="toolbar">
+        <button id="btn-add-folder">Añadir carpeta</button>
+        <button id="btn-reset-template" class="ghost">Restaurar carpetas por defecto</button>
+      </div>
+      <div class="table-scroll">
+        <table id="tpl-table" class="inst"></table>
       </div>
     </section>
 

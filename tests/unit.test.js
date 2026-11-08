@@ -20,7 +20,7 @@ test('detecta instrumento y voz', () => {
   assert.deepEqual(det('Requinto en Mib'), { id: 'requinto', voices: [] });
   assert.deepEqual(det('Bb Trumpet II'), { id: 'trompeta', voices: [2] });
   assert.deepEqual(det('Clarinete segundo'), { id: 'clarinete', voices: [2] });
-  assert.deepEqual(det('Paso doble — Guion Director'), { id: I.IGNORE_ID, voices: [] });
+  assert.deepEqual(det('Paso doble — Guion Director'), { id: I.GUION_ID, voices: [] });
   assert.equal(det('Allegro moderato'), null);
   // Cabeceras en inglés tipo Hal Leonard (OCR)
   assert.deepEqual(det('SOLO B♭ CLARINET'), { id: 'clarinete', voices: [], solo: true });
@@ -132,4 +132,70 @@ test('instrumento grave toma la voz más grave del sustituto', () => {
   const plan = D.computePlan(works, cat);
   assert.equal(plan.assignments.A.clarinete_bajo.fromInst, 'clarinete');
   assert.deepEqual(plan.assignments.A.clarinete_bajo.part.voices, [3]);
+});
+
+test('detección por nombre de archivo', () => {
+  const f = (n) => I.parseFileName(n, cat);
+  assert.deepEqual(f('clte-1.pdf'), { id: 'clarinete', voices: [1], solo: false });
+  assert.deepEqual(f('CLTE-2-3.pdf'), { id: 'clarinete', voices: [2, 3], solo: false });
+  assert.deepEqual(f('CLTE-B.pdf'), { id: 'clarinete_bajo', voices: [], solo: false });
+  assert.deepEqual(f('CLTE-P.pdf'), { id: 'clarinete', voices: [], solo: true });
+  assert.deepEqual(f('tpa-1-e.pdf'), { id: 'trompa_mib', voices: [1], solo: false });
+  assert.deepEqual(f('tpa-1-f.pdf'), { id: 'trompa', voices: [1], solo: false });
+  assert.deepEqual(f('tpta-2.pdf'), { id: 'trompeta', voices: [2], solo: false });
+  assert.deepEqual(f('tbon-3.pdf'), { id: 'trombon', voices: [3], solo: false });
+  assert.deepEqual(f('BDINO-1-C.pdf'), { id: 'bombardino', voices: [1], solo: false });
+  assert.deepEqual(f('bdino-2-b.pdf'), { id: 'bombardino_sib', voices: [2], solo: false });
+  assert.deepEqual(f('sax-a-1.pdf'), { id: 'saxo_alto', voices: [1], solo: false });
+  assert.deepEqual(f('sax-t-2.pdf'), { id: 'saxo_tenor', voices: [2], solo: false });
+  assert.deepEqual(f('sax-b.pdf'), { id: 'saxo_baritono', voices: [], solo: false });
+  assert.deepEqual(f('sax-sop.pdf'), { id: 'saxo_soprano', voices: [], solo: false });
+  assert.deepEqual(f('flis-2.pdf'), { id: 'fliscorno', voices: [2], solo: false });
+  assert.equal(f('BAJOS.pdf').id, 'tuba');
+  assert.equal(f('CAJA.pdf').id, 'caja');
+  assert.equal(f('pandereta-almirez.pdf').id, 'percusion');
+  assert.equal(f('campanas.pdf').id, 'laminas');
+  assert.equal(f('timbales.pdf').id, 'timbales');
+  assert.equal(f('requinto.pdf').id, 'requinto');
+  assert.equal(f('FAGOT.pdf').id, 'fagot');
+  assert.equal(f('txistus.pdf').id, 'txistu');
+  assert.deepEqual(f('violin 2.pdf'), { id: 'violin', voices: [2], solo: false });
+  assert.equal(f('guion.pdf').id, I.GUION_ID);
+  assert.equal(f('El reloj sincopado Guion.pdf').id, I.GUION_ID);
+  assert.deepEqual(f('NAVI CL1.pdf'), { id: 'clarinete', voices: [1], solo: false });
+  assert.equal(f('NAV CL B.pdf').id, 'clarinete_bajo');
+  assert.equal(f('NAV TRPT.pdf').id, 'trompeta');
+  assert.equal(f('NAV TPA.pdf').id, 'trompa');
+  assert.equal(f('NAV TB.pdf').id, 'tuba');
+  assert.equal(f('NAV SA.pdf').id, 'saxo_alto');
+  assert.equal(f('7.pdf'), null);
+  assert.equal(f('All i want for christmas is you.pdf'), null);
+});
+
+test('plantilla de la banda', () => {
+  const tpl = [
+    { key: 'Fl', inst: 'flauta', voice: 1 },
+    { key: 'Ob', inst: 'oboe', voice: 1 },
+    { key: 'Cl1', inst: 'clarinete', voice: 1 },
+    { key: 'Cl2', inst: 'clarinete', voice: 2 },
+    { key: 'ClB', inst: 'clarinete_bajo', voice: 1 },
+    { key: 'Trpt', inst: 'trompeta', voice: 1 },
+    { key: 'Per', all: true, insts: ['percusion', 'caja', 'timbales', 'laminas'] },
+  ];
+  const works = [
+    { id: 'P', parts: [part('clarinete~solo', []), part('clarinete', [1]), part('clarinete', [2, 3]), part('flauta', []),
+      part('trompeta', [1]), part('trompeta', [2]), part('caja', []), part('percusion', []), part('clarinete_bajo', [])] },
+    { id: 'R', parts: [part('flauta', []), part('saxo_tenor', []), part('clarinete', [1]), part('timbales', [])] },
+  ];
+  const plan = D.computePlan(works, cat, { folders: tpl });
+  const P = plan.assignments.P;
+  const R = plan.assignments.R;
+  assert.deepEqual(P.Cl1.part.voices, [1]);
+  assert.deepEqual(P.Cl2.part.voices, [2, 3]);
+  assert.equal(P.Trpt.parts.length, 1);
+  assert.deepEqual(P.Per.parts.map((p) => p.inst), ['caja', 'percusion']);
+  assert.equal(P.Ob.type, 'familia'); // Oboe ← Flauta
+  assert.equal(R.ClB.fromInst, 'saxo_tenor'); // Clarinete bajo ← Saxo tenor (como en el ejemplo)
+  assert.equal(R.Cl2.type, 'voz'); // Clarinete 2 ← Clarinete 1
+  assert.deepEqual(R.Per.parts.map((p) => p.inst), ['timbales']);
 });

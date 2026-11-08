@@ -50,6 +50,9 @@
       subs: ['saxo_alto'] },
     { id: 'trompa', name: 'Trompa', family: 'Metal', tuning: 'F', clef: 'Sol',
       aliases: ['trompa', 'trompas', 'horn in f', 'french horn', 'horn', 'horns', 'corno', 'corni', 'cor', 'trompa en fa'], subs: ['corno_ingles'] },
+    { id: 'trompa_mib', name: 'Trompa Mi♭', family: 'Metal', tuning: 'Eb', clef: 'Sol',
+      aliases: ['trompa en mib', 'trompa mib', 'trompas en mib', 'horn in eb', 'eb horn', 'alto horn', 'trompa mi b'],
+      subs: ['saxo_alto'] },
     { id: 'fliscorno', name: 'Fliscorno', family: 'Metal', tuning: 'Bb', clef: 'Sol',
       aliases: ['fliscorno', 'fliscornos', 'flugelhorn', 'flicorno', 'fiscorno', 'bugle', 'flicorno soprano'], subs: ['trompeta'] },
     { id: 'trompeta', name: 'Trompeta', family: 'Metal', tuning: 'Bb', clef: 'Sol',
@@ -72,11 +75,15 @@
       subs: ['trombon_bajo', 'bombardino', 'fagot'] },
     { id: 'contrabajo', low: true, name: 'Contrabajo', family: 'Cuerda', tuning: 'C', clef: 'Fa',
       aliases: ['contrabajo', 'string bass', 'double bass', 'contrabbasso', 'contrebasse', 'kontrabass', 'electric bass', 'bajo electrico'], subs: ['tuba'] },
+    { id: 'violin', name: 'Violín', family: 'Cuerda', tuning: 'C', clef: 'Sol',
+      aliases: ['violin', 'violines', 'violino', 'violini', 'violon', 'violine'], subs: [] },
+    { id: 'txistu', name: 'Txistu', family: 'Madera', tuning: 'C', clef: 'Sol',
+      aliases: ['txistu', 'txistus', 'chistu', 'chistus'], subs: [] },
     { id: 'timbales', name: 'Timbales', family: 'Percusión', tuning: 'perc', clef: 'Fa',
       aliases: ['timbales', 'timpani', 'timbal', 'timbales sinfonicos', 'pauken'], subs: [] },
     { id: 'laminas', name: 'Láminas', family: 'Percusión', tuning: 'C', clef: 'Sol',
       aliases: ['laminas', 'xilofono', 'xylophone', 'glockenspiel', 'lira', 'vibrafono', 'vibraphone',
-        'marimba', 'campanolo', 'mallets', 'carillon', 'mallet percussion', 'mallet perc', 'orchestra bells', 'chimes', 'campanas tubulares'], subs: [] },
+        'marimba', 'campanolo', 'mallets', 'carillon', 'mallet percussion', 'mallet perc', 'orchestra bells', 'chimes', 'campanas tubulares', 'campanas', 'campanolo'], subs: [] },
     { id: 'caja', name: 'Caja', family: 'Percusión', tuning: 'perc', clef: 'Perc.',
       aliases: ['caja', 'redoblante', 'snare drum', 'snare', 'tambor'], subs: ['percusion'] },
     { id: 'bombo', name: 'Bombo', family: 'Percusión', tuning: 'perc', clef: 'Perc.',
@@ -84,12 +91,16 @@
     { id: 'platos', name: 'Platos', family: 'Percusión', tuning: 'perc', clef: 'Perc.',
       aliases: ['platos', 'cymbals', 'plato', 'crash cymbals'], subs: ['bombo', 'percusion'] },
     { id: 'percusion', name: 'Percusión', family: 'Percusión', tuning: 'perc', clef: 'Perc.',
-      aliases: ['percusion', 'percussion', 'bateria', 'drum set', 'drumset', 'accesorios', 'percussioni', 'percussions', 'schlagzeug', 'auxiliary percussion'], subs: ['caja', 'bombo', 'platos'] },
+      aliases: ['percusion', 'percussion', 'bateria', 'drum set', 'drumset', 'accesorios', 'percussioni', 'percussions', 'schlagzeug', 'auxiliary percussion',
+        'pandereta', 'almirez', 'triangulo', 'triangle', 'castanuelas', 'cascabeles', 'sleigh bells', 'tambourine',
+        'claves', 'maracas', 'zambomba', 'gong', 'tam tam', 'carraca', 'woodblock', 'caja china'], subs: ['caja', 'bombo', 'platos'] },
   ];
 
   // Páginas que no son papeles de instrumento (guion de director, portadas...).
   const IGNORE_ID = '_ignorar';
-  const IGNORE_ALIASES = ['guion', 'guion director', 'director', 'partitura general', 'full score',
+  // Guion del director (partitura general, portada "Conductor"...).
+  const GUION_ID = '_guion';
+  const GUION_ALIASES = ['guion', 'guion director', 'director', 'partitura general', 'full score',
     'conductor', 'score', 'partitura completa', 'condensed score'];
 
   const ORDINAL_WORDS = {
@@ -217,7 +228,7 @@
         if (na) list.push({ id: inst.id, alias: na });
       }
     }
-    for (const a of IGNORE_ALIASES) list.push({ id: IGNORE_ID, alias: normalize(a) });
+    for (const a of GUION_ALIASES) list.push({ id: GUION_ID, alias: normalize(a) });
     list.sort((x, y) => y.alias.length - x.alias.length);
     for (const m of list) {
       // Admite la afinación pegada al nombre ("FHORN", "BbCLARINET"), algo típico del OCR.
@@ -261,7 +272,7 @@
     }
     found.sort((a, b) => a.start - b.start);
     return found.map((f) => {
-      if (f.id === IGNORE_ID) return { id: IGNORE_ID, voices: [], solo: false, start: f.start };
+      if (f.id === GUION_ID) return { id: GUION_ID, voices: [], solo: false, start: f.start };
       const solo = SOLO_BEFORE.test(t.slice(Math.max(0, f.start - 20), f.start)) || SOLO_AFTER.test(t.slice(f.end, f.end + 20));
       return { id: f.id, voices: findVoicesNear(t, f.start, f.end), solo, start: f.start };
     });
@@ -279,8 +290,83 @@
   /** Devuelve los distintos instrumentos mencionados en un texto (para reconocer páginas de guion). */
   function detectAll(text, catalog, matchers) {
     const ids = new Set();
-    for (const c of detectCandidates(text, catalog, matchers)) if (c.id !== IGNORE_ID) ids.add(c.id);
+    for (const c of detectCandidates(text, catalog, matchers)) if (c.id !== GUION_ID) ids.add(c.id);
     return Array.from(ids);
+  }
+
+  // Abreviaturas habituales en los nombres de archivo de los papeles (clte-1.pdf, tpa-1-f.pdf, NAV TRPT.pdf...).
+  const FILE_ABBR = {
+    clte: 'clarinete', clt: 'clarinete', clts: 'clarinete', cl: 'clarinete', cla: 'clarinete', clar: 'clarinete',
+    clarinet: 'clarinete', clarinete: 'clarinete', clarinetes: 'clarinete', clarinets: 'clarinete',
+    tpa: 'trompa', tpas: 'trompa', trpa: 'trompa', trp: 'trompa', trompa: 'trompa', trompas: 'trompa', hn: 'trompa', horn: 'trompa',
+    tpta: 'trompeta', tptas: 'trompeta', tpt: 'trompeta', trpt: 'trompeta', tp: 'trompeta', tr: 'trompeta',
+    tbon: 'trombon', tbn: 'trombon', trb: 'trombon', tbones: 'trombon',
+    bdino: 'bombardino', bdno: 'bombardino', bno: 'bombardino', bomb: 'bombardino', bdinos: 'bombardino', euph: 'bombardino',
+    fl: 'flauta', flt: 'flauta', fla: 'flauta', flis: 'fliscorno', fli: 'fliscorno', flisc: 'fliscorno', flg: 'fliscorno',
+    ob: 'oboe', fg: 'fagot', fag: 'fagot', req: 'requinto', pic: 'flautin', picc: 'flautin',
+    sa: 'saxo alto', st: 'saxo tenor', sb: 'saxo baritono', ss: 'saxo soprano', asx: 'saxo alto', tsx: 'saxo tenor',
+    tb: 'tuba', tba: 'tuba', bajo: 'tuba', bajos: 'tuba',
+    per: 'percusion', perc: 'percusion', timb: 'timbales', lam: 'laminas', xil: 'laminas',
+    vl: 'violin', vln: 'violin', vn: 'violin', cb: 'contrabajo',
+  };
+  const SAX_WORDS = new Set(['sax', 'saxo', 'saxos', 'saxofon', 'saxofones', 'saxophone', 'saxophones']);
+  const SAX_KIND = { a: 'saxo_alto', alto: 'saxo_alto', altos: 'saxo_alto', t: 'saxo_tenor', tenor: 'saxo_tenor', tenores: 'saxo_tenor',
+    b: 'saxo_baritono', bar: 'saxo_baritono', bari: 'saxo_baritono', baritono: 'saxo_baritono', baritone: 'saxo_baritono',
+    s: 'saxo_soprano', sop: 'saxo_soprano', soprano: 'saxo_soprano' };
+  const GUION_WORDS = new Set(['guion', 'guiones', 'director', 'score', 'conductor', 'partitura', 'general', 'full']);
+
+  /**
+   * Detecta instrumento y voz en el nombre de un archivo de papel suelto.
+   * Devuelve { id, voices, solo } o null si el nombre no dice nada (p. ej. "7.pdf").
+   */
+  function parseFileName(fileName, catalog, matchers) {
+    const base = String(fileName || '').replace(/\.[a-z0-9]+$/i, '');
+    const tokens = normalize(base.replace(/([a-zA-Z])(\d)/g, '$1 $2').replace(/(\d)([a-zA-Z])/g, '$1 $2'))
+      .split(/[^a-z0-9º]+/).filter(Boolean);
+    if (!tokens.length) return null;
+    if (tokens.some((t) => t === 'guion' || t === 'guiones' || t === 'conductor') ||
+        (tokens.includes('score') && tokens.includes('full')) || (tokens.includes('partitura') && tokens.includes('general'))) {
+      return { id: GUION_ID, voices: [], solo: false };
+    }
+    let id = null;
+    let at = -1;
+    let solo = false;
+    for (let i = 0; i < tokens.length && !id; i++) {
+      const t = tokens[i];
+      const next = tokens[i + 1];
+      if (SAX_WORDS.has(t) && next && SAX_KIND[next]) { id = SAX_KIND[next]; at = i + 1; break; }
+      const abbr = FILE_ABBR[t];
+      if (abbr === 'clarinete') {
+        at = i;
+        if (next === 'b' || next === 'bajo' || next === 'bass') { id = 'clarinete_bajo'; at = i + 1; }
+        else if (next === 'alto' || next === 'a') { id = 'clarinete_alto'; at = i + 1; }
+        else if (next === 'mib' || next === 'req' || next === 'eb') { id = 'requinto'; at = i + 1; }
+        else if (next === 'p' || next === 'pral' || next === 'principal' || next === 'solista' || next === 'solo') { id = 'clarinete'; solo = true; at = i + 1; }
+        else id = 'clarinete';
+      }
+    }
+    if (!id) {
+      // Texto con las abreviaturas desarrolladas y búsqueda normal de nombres de instrumento.
+      const text = tokens.map((t) => FILE_ABBR[t] || t).join(' ');
+      const c = detectCandidates(text, catalog, matchers).find((x) => x.id !== GUION_ID);
+      if (!c) return null;
+      id = c.id;
+      solo = c.solo;
+      // Posición aproximada del instrumento para leer las voces que vienen detrás.
+      const words = text.split(' ');
+      const pos = text.slice(0, c.start).split(' ').length - 1;
+      at = Math.min(tokens.length - 1, Math.max(0, pos - (words.length - tokens.length)));
+    }
+    const rest = tokens.slice(at + 1);
+    // Afinación indicada con una letra: tpa-1-e (Mi♭), tpa-1-f (Fa), bdino-1-b (Si♭), bdino-1-c (Do).
+    const keys = new Set(rest.filter((t) => /^[a-z]{1,3}$/.test(t)));
+    if ((id === 'trompa' || id === 'trompa_mib') && (keys.has('e') || keys.has('es') || keys.has('mib') || keys.has('eb'))) id = 'trompa_mib';
+    else if (id === 'trompa_mib' && (keys.has('f') || keys.has('fa'))) id = 'trompa';
+    if ((id === 'bombardino' || id === 'bombardino_sib') && (keys.has('b') || keys.has('sib') || keys.has('bb') || keys.has('tc'))) id = 'bombardino_sib';
+    else if (id === 'bombardino_sib' && (keys.has('c') || keys.has('do') || keys.has('bc'))) id = 'bombardino';
+    if (rest.includes('solo') || rest.includes('solista')) solo = true;
+    const voices = Array.from(new Set(rest.filter((t) => /^[1-9]$/.test(t)).map(Number))).sort((x, y) => x - y);
+    return { id, voices, solo };
   }
 
   /** Genera la lista de sustitutos por defecto: misma familia + misma afinación + misma clave. */
@@ -297,6 +383,8 @@
   const api = {
     DEFAULT_CATALOG,
     IGNORE_ID,
+    GUION_ID,
+    parseFileName,
     normalize,
     parseVoices,
     formatVoices,

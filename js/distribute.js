@@ -118,13 +118,23 @@
 
   /**
    * Calcula el plan completo.
-   * Devuelve { folders, maxVoices, assignments: { [workId]: { [folderKey]: {type, part, fromInst} } } }
+   * opts.folders: carpetas definidas por el usuario (plantilla de la banda). Cada una es
+   *   { key, inst, voice, all, insts, extraSubs }:
+   *   - all = false: un papel para (inst, voice); si falta, otra voz o un sustituto
+   *     (primero extraSubs, después los sustitutos del catálogo).
+   *   - all = true: todos los papeles de los instrumentos de "insts" (p. ej. toda la percusión).
+   * Sin opts.folders, se crea una carpeta por voz hasta el máximo de voces de cada instrumento.
+   * Devuelve { folders, maxVoices, assignments: { [workId]: { [folderKey]: {type, part, parts, fromInst} } } }
    */
-  function computePlan(works, catalog) {
-    const { folders, maxVoices } = computeFolders(works, catalog);
+  function computePlan(works, catalog, opts) {
+    opts = opts || {};
+    const auto = computeFolders(works, catalog);
+    const maxVoices = auto.maxVoices;
+    const folders = opts.folders || auto.folders;
     const byId = Object.fromEntries(catalog.map((c) => [c.id, c]));
     const foldersByInst = {};
-    for (const f of folders) (foldersByInst[f.inst] = foldersByInst[f.inst] || []).push(f);
+    for (const f of folders) if (!f.all) (foldersByInst[f.inst] = foldersByInst[f.inst] || []).push(f);
+    const baseOf = (id) => String(id).replace(/~solo$/, '');
 
     const usage = {};
     const assignments = {};
@@ -136,7 +146,7 @@
 
       for (const inst of Object.keys(foldersByInst)) {
         const targets = foldersByInst[inst];
-        const max = maxVoices[inst];
+        const max = Math.max(maxVoices[inst] || 1, ...targets.map((t) => t.voice || 1));
         const own = byInst[inst];
 
         if (own && own.length) {
@@ -156,14 +166,15 @@
               usage,
               usagePrefix: `${inst}>${inst}:`,
               // Cada papel ya cubre su(s) propia(s) carpeta(s).
-              initialLoad: (s) => (s.voices ? s.voices.filter((v) => v <= max).length : 1),
+              initialLoad: (s) => (s.voices ? s.voices.filter((v) => v <= max && targets.some((t) => (t.voice || 1) === v)).length : 1),
             });
             for (const t of missing) a[t.key] = { type: 'voz', part: res.get(t.key), fromInst: inst };
           }
           continue;
         }
 
-        const subs = (byId[inst] && byId[inst].subs) || [];
+        const extra = targets.reduce((acc, t) => acc.concat(t.extraSubs || []), []);
+        const subs = extra.concat((byId[inst] && byId[inst].subs) || []);
         const cand = subs.find((s) => byInst[s] && byInst[s].length);
         if (cand) {
           const res = balance(targets, byInst[cand], {
@@ -178,6 +189,15 @@
           for (const t of targets) a[t.key] = { type: 'falta', part: null, fromInst: null };
         }
       }
+
+      // Carpetas que reciben todos los papeles de varios instrumentos (p. ej. percusión).
+      for (const f of folders) {
+        if (!f.all) continue;
+        const set = new Set(f.insts || [f.inst]);
+        const parts = w.parts.filter((p) => set.has(baseOf(p.inst)));
+        a[f.key] = parts.length ? { type: 'propio', part: parts[0], parts, fromInst: null } : { type: 'falta', part: null, parts: [], fromInst: null };
+      }
+      for (const k of Object.keys(a)) if (!a[k].parts) a[k].parts = a[k].part ? [a[k].part] : [];
     }
     return { folders, maxVoices, assignments };
   }
