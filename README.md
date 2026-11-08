@@ -29,7 +29,9 @@ Funciona entera en el navegador: los PDF **no se suben a ningún servidor**.
 2. **Reparto**: tabla con todas las carpetas y lo que recibe cada una en cada obra. Cualquier casilla se
    puede cambiar a mano.
 3. **Exportar**: descarga un ZIP con las carpetas (`01 Flauta/Obra A.pdf`, `05 Clarinete 3º/Obra B.pdf`…),
-   un informe `Informe.csv` y, si quieres, un cuadernillo con todas las obras por carpeta.
+   un informe `Informe.csv` y, en cada carpeta, un **único PDF con todas las obras de esa voz**
+   (`00 Clarinete 1º - Todas las obras.pdf`, con un marcador por obra). Esta opción viene marcada y se
+   puede desactivar; los PDF por obra se mantienen siempre.
 
 ## Reglas del reparto
 

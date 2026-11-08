@@ -817,6 +817,7 @@
         const folder = root.folder(folderName);
         const bookDoc = book ? await PDFLib.PDFDocument.create() : null;
         const bookFont = bookDoc ? await bookDoc.embedFont(PDFLib.StandardFonts.Helvetica) : null;
+        const bookmarks = [];
 
         for (const w of plan.works) {
           const a = plan.assignments[w.id][f.key];
@@ -837,13 +838,18 @@
           folder.file(fileNames[w.id], await out.save());
 
           if (bookDoc) {
+            bookmarks.push({
+              title: isSub ? `${w.name} (papel de ${partLabel(a.part.inst, a.part.voices)})` : w.name,
+              pageIndex: bookDoc.getPageCount(),
+            });
             const c2 = await bookDoc.copyPages(srcDocs[w.id], pages);
             c2.forEach((pg) => { bookDoc.addPage(pg); if (note) stampPage(pg, note, bookFont); });
           }
         }
         if (bookDoc && bookDoc.getPageCount()) {
-          bookDoc.setTitle(folderLabel(f));
-          folder.file(`00 Cuadernillo ${safeName(folderLabel(f))}.pdf`, await bookDoc.save());
+          bookDoc.setTitle(`${folderLabel(f)} - Todas las obras`);
+          addOutline(bookDoc, bookmarks);
+          folder.file(`00 ${safeName(folderLabel(f))} - Todas las obras.pdf`, await bookDoc.save());
         }
         done++;
         setStatus(status, `Generando carpetas… ${done} de ${plan.folders.length}`);
@@ -871,6 +877,29 @@
   function csvCell(v) {
     const s = String(v ?? '');
     return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  }
+
+  // Marcadores del PDF (índice lateral del lector): uno por obra.
+  function addOutline(doc, entries) {
+    if (!entries.length) return;
+    const { PDFName, PDFHexString } = PDFLib;
+    const ctx = doc.context;
+    const pages = doc.getPages();
+    const rootRef = ctx.nextRef();
+    const refs = entries.map(() => ctx.nextRef());
+    entries.forEach((e, i) => {
+      const item = ctx.obj({
+        Title: PDFHexString.fromText(e.title),
+        Parent: rootRef,
+        Dest: [pages[e.pageIndex].ref, 'XYZ', null, null, null],
+      });
+      if (i > 0) item.set(PDFName.of('Prev'), refs[i - 1]);
+      if (i < refs.length - 1) item.set(PDFName.of('Next'), refs[i + 1]);
+      ctx.assign(refs[i], item);
+    });
+    ctx.assign(rootRef, ctx.obj({ Type: 'Outlines', First: refs[0], Last: refs[refs.length - 1], Count: refs.length }));
+    doc.catalog.set(PDFName.of('Outlines'), rootRef);
+    doc.catalog.set(PDFName.of('PageMode'), PDFName.of('UseOutlines'));
   }
 
   function stampPage(page, text, font) {
