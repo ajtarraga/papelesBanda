@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Papeles de Banda</title>
+  <meta name="description" content="Divide guiones de partituras en papeles por instrumento y reparte las voces que faltan.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">♪</span>
+      <div>
+        <h1>Papeles de Banda</h1>
+        <p class="subtitle">Divide guiones por instrumento y completa las voces que faltan</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="cargar" role="tab">1 · Cargar y revisar</button>
+      <button class="tab" data-view="reparto" role="tab">2 · Reparto</button>
+      <button class="tab" data-view="exportar" role="tab">3 · Exportar</button>
+      <button class="tab secondary" data-view="instrumentos" role="tab">Instrumentos</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 1. CARGAR Y REVISAR -->
+    <section id="view-cargar" class="view active">
+      <label id="dropzone" class="dropzone">
+        <input id="file-input" type="file" accept="application/pdf,.pdf" multiple hidden>
+        <strong>Arrastra aquí los guiones en PDF</strong>
+        <span>o haz clic para elegirlos (un PDF por obra, con los papeles seguidos)</span>
+      </label>
+      <div id="load-status" class="status" hidden></div>
+
+      <div class="help" id="help-cargar">
+        <p>Cada página se asigna a un instrumento y voz leyendo su cabecera. Las páginas sin cabecera
+          <em>heredan</em> la asignación de la anterior. Revisa y corrige lo necesario: al cambiar una página,
+          las siguientes páginas heredadas cambian con ella.</p>
+        <p>Voz: escribe <code>1</code>, <code>2</code>, <code>2-3</code>, <code>1 y 2</code>… o déjala vacía si
+          es un papel único para todo el instrumento. Usa <em>Ignorar</em> para portadas, guion de director
+          o copias repetidas.</p>
+      </div>
+
+      <div id="works"></div>
+    </section>
+
+    <!-- 2. REPARTO -->
+    <section id="view-reparto" class="view">
+      <div id="plan-empty" class="empty">Carga al menos un guion para ver el reparto.</div>
+      <div id="plan-wrap" hidden>
+        <div class="legend">
+          <span class="cell-propio badge">Propio</span>
+          <span class="cell-voz badge">Otra voz del mismo instrumento</span>
+          <span class="cell-familia badge">Instrumento de la misma familia y afinación</span>
+          <span class="cell-falta badge">Sin papel</span>
+          <span class="cell-manual badge">Elegido a mano</span>
+        </div>
+        <p class="help small">Se crea una carpeta por cada voz hasta el máximo encontrado entre todas las obras.
+          Puedes cambiar cualquier casilla con su desplegable.</p>
+        <div id="plan-summary" class="summary"></div>
+        <div class="table-scroll">
+          <table id="plan-table" class="plan"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. EXPORTAR -->
+    <section id="view-exportar" class="view">
+      <div class="card export">
+        <h2>Descargar carpetas</h2>
+        <p>Se genera un ZIP con una carpeta por instrumento y voz, y dentro un PDF por obra.</p>
+        <label class="check"><input type="checkbox" id="opt-stamp" checked>
+          Marcar en el pie los papeles sustituidos (p. ej. «Papel de Trompeta 2º»)</label>
+        <label class="check"><input type="checkbox" id="opt-book">
+          Añadir en cada carpeta un cuadernillo con todas las obras en un solo PDF</label>
+        <label class="check"><input type="checkbox" id="opt-report" checked>
+          Incluir informe del reparto (Informe.csv)</label>
+        <label class="field">Nombre del ZIP
+          <input type="text" id="opt-zipname" value="Papeles banda"></label>
+        <button id="btn-export" class="primary">Descargar ZIP</button>
+        <div id="export-status" class="status" hidden></div>
+      </div>
+    </section>
+
+    <!-- INSTRUMENTOS -->
+    <section id="view-instrumentos" class="view">
+      <div class="help">
+        <p>El orden de la tabla es el orden de las carpetas. <strong>Sustitutos</strong>: instrumentos que pueden
+          tocar el papel cuando falta, por orden de preferencia (misma familia y afinación, para no transportar).
+          <strong>Nombres</strong>: textos que se buscan en la cabecera de las páginas.</p>
+      </div>
+      <div class="toolbar">
+        <button id="btn-add-inst">Añadir instrumento</button>
+        <button id="btn-reset-inst" class="ghost">Restaurar valores por defecto</button>
+      </div>
+      <div class="table-scroll">
+        <table id="inst-table" class="inst"></table>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal" class="modal" hidden>
+    <div class="modal-body">
+      <button class="modal-close" aria-label="Cerrar">×</button>
+      <canvas id="modal-canvas"></canvas>
+    </div>
+  </div>
+
+  <script src="vendor/pdf.min.js"></script>
+  <script src="vendor/pdf-lib.min.js"></script>
+  <script src="vendor/jszip.min.js"></script>
+  <script src="js/instruments.js"></script>
+  <script src="js/distribute.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

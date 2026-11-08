@@ -1,0 +1,100 @@
+// Ejecutar con: node --test tests/
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const I = require('../js/instruments.js');
+const D = require('../js/distribute.js');
+
+const cat = I.DEFAULT_CATALOG;
+const det = (t) => I.detect(t, cat);
+
+test('detecta instrumento y voz', () => {
+  assert.deepEqual(det('Clarinete 1º en Sib'), { id: 'clarinete', voices: [1] });
+  assert.deepEqual(det('Clarinete en Sib 2'), { id: 'clarinete', voices: [2] });
+  assert.deepEqual(det('2º Trompeta'), { id: 'trompeta', voices: [2] });
+  assert.deepEqual(det('Trompeta 2 y 3'), { id: 'trompeta', voices: [2, 3] });
+  assert.deepEqual(det('Trompa en Fa 1-3'), { id: 'trompa', voices: [1, 2, 3] });
+  assert.deepEqual(det('Saxofón Alto 1º'), { id: 'saxo_alto', voices: [1] });
+  assert.deepEqual(det('Saxo Barítono'), { id: 'saxo_baritono', voices: [] });
+  assert.deepEqual(det('Bombardino en Si♭'), { id: 'bombardino_sib', voices: [] });
+  assert.deepEqual(det('Clarinete Bajo'), { id: 'clarinete_bajo', voices: [] });
+  assert.deepEqual(det('Requinto en Mib'), { id: 'requinto', voices: [] });
+  assert.deepEqual(det('Bb Trumpet II'), { id: 'trompeta', voices: [2] });
+  assert.deepEqual(det('Clarinete segundo'), { id: 'clarinete', voices: [2] });
+  assert.deepEqual(det('Paso doble — Guion Director'), { id: I.IGNORE_ID, voices: [] });
+  assert.equal(det('Allegro moderato'), null);
+});
+
+test('interpreta voces', () => {
+  assert.deepEqual(I.parseVoices('2-3'), [2, 3]);
+  assert.deepEqual(I.parseVoices('1 y 2'), [1, 2]);
+  assert.deepEqual(I.parseVoices('III'), [3]);
+  assert.deepEqual(I.parseVoices(''), []);
+  assert.equal(I.formatVoices([1, 2, 3]), '1-3');
+  assert.equal(I.formatVoices([1, 3]), '1,3');
+});
+
+const part = (inst, voices) => ({ id: `${inst}${voices.join('')}`, inst, voices, pages: [0] });
+
+test('carpetas por máximo de voces', () => {
+  const works = [
+    { id: 'A', parts: [part('clarinete', [1]), part('clarinete', [2]), part('clarinete', [3])] },
+    { id: 'B', parts: [part('clarinete', [1]), part('clarinete', [2])] },
+  ];
+  const { folders, maxVoices } = D.computeFolders(works, cat);
+  assert.equal(maxVoices.clarinete, 3);
+  assert.deepEqual(folders.map((f) => f.key), ['clarinete#1', 'clarinete#2', 'clarinete#3']);
+});
+
+test('rotación equilibrada de voces que faltan', () => {
+  const works = ['A', 'B', 'C', 'D'].map((id) => ({ id, parts: [part('clarinete', [1]), part('clarinete', [2])] }));
+  works.unshift({ id: 'X', parts: [part('clarinete', [1]), part('clarinete', [2]), part('clarinete', [3])] });
+  const plan = D.computePlan(works, cat);
+  const used = ['A', 'B', 'C', 'D'].map((id) => plan.assignments[id]['clarinete#3']);
+  used.forEach((u) => assert.equal(u.type, 'voz'));
+  const counts = {};
+  used.forEach((u) => (counts[u.part.voices[0]] = (counts[u.part.voices[0]] || 0) + 1));
+  assert.deepEqual(counts, { 1: 2, 2: 2 });
+  assert.equal(plan.assignments.X['clarinete#3'].type, 'propio');
+});
+
+test('reparto equilibrado dentro de una obra', () => {
+  const works = [
+    { id: 'X', parts: [1, 2, 3, 4].map((v) => part('trompeta', [v])) },
+    { id: 'A', parts: [part('trompeta', [1]), part('trompeta', [2])] },
+  ];
+  const plan = D.computePlan(works, cat);
+  const a = plan.assignments.A;
+  const got = [a['trompeta#3'].part.voices[0], a['trompeta#4'].part.voices[0]].sort();
+  assert.deepEqual(got, [1, 2]);
+});
+
+test('sustitución por familia y afinación', () => {
+  const works = [
+    { id: 'X', parts: [part('fliscorno', [1]), part('fliscorno', [2]), part('trompeta', [1])] },
+    { id: 'A', parts: [part('trompeta', [1]), part('trompeta', [2])] },
+    { id: 'B', parts: [part('saxo_alto', [])] },
+  ];
+  const plan = D.computePlan(works, cat);
+  assert.equal(plan.assignments.A['fliscorno#1'].type, 'familia');
+  assert.equal(plan.assignments.A['fliscorno#1'].fromInst, 'trompeta');
+  assert.deepEqual(plan.assignments.A['fliscorno#1'].part.voices, [1]);
+  assert.deepEqual(plan.assignments.A['fliscorno#2'].part.voices, [2]);
+  // Saxo alto (Mi♭) no puede tocar papel de trompeta/fliscorno (Si♭)
+  assert.equal(plan.assignments.B['fliscorno#1'].type, 'falta');
+});
+
+test('papel único cubre todas las voces', () => {
+  const works = [
+    { id: 'X', parts: [part('trompa', [1]), part('trompa', [2])] },
+    { id: 'A', parts: [part('trompa', [])] },
+  ];
+  const plan = D.computePlan(works, cat);
+  assert.equal(plan.assignments.A['trompa#2'].type, 'propio');
+});
+
+test('papel combinado 2-3', () => {
+  const works = [{ id: 'A', parts: [part('clarinete', [1]), part('clarinete', [2, 3])] }];
+  const plan = D.computePlan(works, cat);
+  assert.equal(plan.assignments.A['clarinete#3'].type, 'propio');
+  assert.deepEqual(plan.assignments.A['clarinete#3'].part.voices, [2, 3]);
+});
