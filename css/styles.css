@@ -266,3 +266,8 @@ a.tab { text-decoration: none; color: inherit; display: inline-block; }
 button.active-btn { background: var(--surface-2); border-color: var(--accent); }
 
 [hidden] { display: none !important; }
+
+.t-pdf-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
+.t-pdf-name { font-weight: 600; flex: 1 1 200px; overflow-wrap: anywhere; }
+.t-pdf-msg { flex-basis: 100%; font-size: 13px; color: var(--muted); }
+.t-pdf-msg.warn { color: var(--falta-b); white-space: pre-wrap; }

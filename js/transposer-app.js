@@ -89,10 +89,10 @@
     return file.text();
   }
 
-  async function addFiles(files) {
+  async function addFiles(files, extra) {
     let pdfs = 0;
     for (const file of files) {
-      if (/\.pdf$/i.test(file.name)) { pdfs++; continue; }
+      if (/\.pdf$/i.test(file.name)) { pdfs++; pdfQueue.push({ id: `p${nextId++}`, file, state: 'pendiente', msg: '' }); continue; }
       if (!/\.(musicxml|xml|mxl)$/i.test(file.name)) continue;
       try {
         setStatus(`Leyendo «${file.name}»…`);
@@ -107,7 +107,7 @@
         works.push({
           id: `t${nextId++}`, fileName: file.name, base, xml, info,
           from, to: from, clef: 'auto', octave: 0, partName: info.name,
-          page: 1, view: 'transportado', result: null,
+          page: 1, view: 'transportado', result: null, ...(extra || {}),
         });
       } catch (err) {
         console.error(err);
@@ -116,9 +116,94 @@
       }
     }
     setStatus('');
-    $('#t-pdf-help').hidden = !pdfs;
-    if (pdfs) $('#t-pdf-help').scrollIntoView({ behavior: 'smooth' });
+    if (pdfs) { renderPdfs(); $('#t-pdfs').scrollIntoView({ behavior: 'smooth' }); }
     await renderAll();
+  }
+
+  // ---------- Reconocer PDF (Audiveris, a través del servidor local de «Iniciar») ----------
+  const pdfQueue = [];
+  const omr = { checked: false, available: false, command: null, local: false };
+  const omrReady = (async () => {
+    omr.local = /^https?:$/.test(location.protocol) && ['localhost', '127.0.0.1'].includes(location.hostname);
+    if (omr.local) {
+      try {
+        const r = await fetch('api/omr/status', { cache: 'no-store' });
+        if (r.ok) { const j = await r.json(); omr.available = !!j.available; omr.command = j.command; }
+      } catch (e) { /* servidor sin reconocimiento */ }
+    }
+    omr.checked = true;
+  })();
+
+  async function renderPdfs() {
+    await omrReady;
+    const root = $('#t-pdfs');
+    root.innerHTML = '';
+    root.hidden = !pdfQueue.length;
+    if (!pdfQueue.length) return;
+    const card = h('div', { class: 'card' }, h('h2', null, 'PDF: reconocer la música'));
+    if (omr.available) {
+      card.append(h('p', null, 'Un PDF es una imagen de la partitura. «Reconocer PDF» la convierte en MusicXML con ',
+        h('strong', null, 'Audiveris'), ' (en tu ordenador) y la carga aquí para transportarla. El reconocimiento puede tardar ',
+        'un par de minutos por página y comete errores: revisa el resultado antes de transportar.'));
+    } else {
+      card.append(h('p', null, 'Un PDF es una imagen de la partitura: antes de transportarlo hay que reconocer la música (OMR). ',
+        'Para hacerlo desde aquí con el botón «Reconocer PDF»:'),
+      h('ol', null,
+        h('li', null, 'Instala ', h('strong', null, 'Audiveris'), ' (gratuito) desde ',
+          h('a', { href: 'https://github.com/Audiveris/audiveris/releases', target: '_blank', rel: 'noopener' }, 'su página de descargas'),
+          ' (en Windows, el archivo «windows-x86_64.msi»; en Mac, el «.dmg»).'),
+        h('li', null, 'Abre la aplicación con ', h('strong', null, '«Iniciar (Windows).bat»'), ' o ', h('strong', null, '«Iniciar (Mac-Linux).command»'),
+          ' (no desde la web publicada ni abriendo el archivo directamente).'),
+        h('li', null, 'Vuelve a cargar aquí el PDF.')),
+      h('p', { class: 'small help' }, omr.local
+        ? 'El servidor local está en marcha pero no encuentra Audiveris. Si lo has instalado en otra carpeta, indica la ruta en la variable de entorno AUDIVERIS y vuelve a abrir «Iniciar».'
+        : 'Ahora mismo la página no está abierta desde «Iniciar», así que no puede usar Audiveris.'),
+      h('p', { class: 'small help' }, 'También puedes convertirlo tú: ábrelo en MuseScore (Archivo → Importar PDF) o en Audiveris, corrígelo y exporta MusicXML.'));
+    }
+    for (const item of pdfQueue) {
+      const row = h('div', { class: 't-pdf-row' },
+        h('span', { class: 't-pdf-name' }, item.file.name),
+        omr.available ? h('button', { class: 'primary', disabled: item.state === 'reconociendo', onclick: () => recognize(item) },
+          item.state === 'reconociendo' ? 'Reconociendo…' : 'Reconocer PDF') : null,
+        h('button', { class: 'ghost', disabled: item.state === 'reconociendo', onclick: () => { pdfQueue.splice(pdfQueue.indexOf(item), 1); renderPdfs(); } }, 'Quitar'),
+        item.msg ? h('div', { class: `t-pdf-msg${item.state === 'error' ? ' warn' : ''}` }, item.msg) : null);
+      card.append(row);
+    }
+    root.append(card);
+  }
+
+  async function recognize(item) {
+    item.state = 'reconociendo';
+    const t0 = Date.now();
+    item.msg = 'Reconociendo con Audiveris… (puede tardar varios minutos)';
+    renderPdfs();
+    const timer = setInterval(() => {
+      const sec = Math.round((Date.now() - t0) / 1000);
+      item.msg = `Reconociendo con Audiveris… ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')} (puede tardar varios minutos)`;
+      const el = Array.from(document.querySelectorAll('.t-pdf-row')).find((r) => r.querySelector('.t-pdf-name').textContent === item.file.name);
+      if (el && el.querySelector('.t-pdf-msg')) el.querySelector('.t-pdf-msg').textContent = item.msg;
+    }, 1000);
+    try {
+      const r = await fetch(`api/omr?name=${encodeURIComponent(item.file.name)}`, { method: 'POST', body: item.file });
+      const j = await r.json().catch(() => ({ error: `Respuesta no válida del servidor (${r.status})` }));
+      if (!r.ok || j.error) throw new Error(j.error || `Error ${r.status}`);
+      const files = j.files.map((f) => {
+        const bin = atob(f.base64);
+        const u = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+        return new File([u], f.name);
+      });
+      clearInterval(timer);
+      pdfQueue.splice(pdfQueue.indexOf(item), 1);
+      await renderPdfs();
+      await addFiles(files, { omr: item.file.name });
+    } catch (err) {
+      clearInterval(timer);
+      console.error(err);
+      item.state = 'error';
+      item.msg = `No se pudo reconocer: ${err.message || err}`;
+      renderPdfs();
+    }
   }
 
   // ---------- Transporte ----------
@@ -200,7 +285,10 @@
         s.keysBefore.length ? h('div', null, 'Armadura: ', T.keyName(s.keysBefore[0]), ' → ', h('strong', null, T.keyName(s.keysAfter[0])),
           s.keysBefore.length > 1 ? ` (y ${s.keysBefore.length - 1} cambio${s.keysBefore.length > 2 ? 's' : ''} más)` : '') : null,
         h('div', null, `Clave: ${w.result.clef ? 'de ' + T.CLEFS[w.result.clef].name : 'la del original'} · ${s.notes} notas transportadas`),
-        s.warnings.length ? h('div', { class: 'warn' }, s.warnings.join(' ')) : null));
+        s.warnings.length ? h('div', { class: 'warn' }, s.warnings.join(' ')) : null,
+        w.omr ? h('div', { class: 'warn' }, `Reconocido automáticamente desde «${w.omr}» con Audiveris: puede tener errores. ` +
+          'Compáralo con el PDF («Ver original» muestra lo reconocido) y, si hace falta, descarga el MusicXML reconocido, ' +
+          'corrígelo en MuseScore y vuelve a cargarlo.') : null));
 
     if (!error) {
       const preview = h('div', { class: 't-preview' }, h('div', { class: 'empty' }, 'Generando vista previa…'));
@@ -208,6 +296,8 @@
       card.append(h('div', { class: 'toolbar' },
         h('button', { class: 'primary', onclick: () => downloadPdf(w) }, 'Descargar PDF'),
         h('button', { onclick: () => downloadXml(w) }, 'Descargar MusicXML'),
+        w.omr ? h('button', { class: 'ghost', title: 'Lo que ha reconocido Audiveris, sin transportar (para corregirlo en MuseScore)',
+          onclick: () => save(new Blob([w.xml], { type: 'application/vnd.recordare.musicxml+xml' }), `${safe(w.base)} (reconocido).musicxml`) }, 'Descargar MusicXML reconocido') : null,
         h('span', { class: 't-view' },
           ['transportado', 'original'].map((v) => h('button', { class: w.view === v ? 'active-btn' : 'ghost', onclick: () => { w.view = v; w.page = 1; rerender(); } },
             v === 'transportado' ? 'Ver transportado' : 'Ver original')))), pager, preview);
@@ -304,5 +394,5 @@
     }
   });
 
-  window.__transportar = { works, computeResult, makePdf, addFiles, renderPages };
+  window.__transportar = { works, computeResult, makePdf, addFiles, renderPages, pdfQueue, omr };
 })();

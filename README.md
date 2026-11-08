@@ -66,8 +66,21 @@ La página **Transportar** (`transportar.html`, enlazada desde la principal) tra
   conservan** tal cual.
 - Vista previa del original y del transportado, y descarga en **PDF** y **MusicXML** (o un ZIP con todos).
 
-Los PDF no se pueden transportar directamente: antes hay que reconocer la música (OMR) con MuseScore
-(Importar PDF) o Audiveris, revisarla y exportarla a MusicXML. Las percusiones sin altura no se transportan y
+### Reconocer PDF con Audiveris
+
+Un PDF es una imagen: antes de transportarlo hay que reconocer la música (OMR). Para hacerlo desde la página:
+
+1. Instala [Audiveris](https://github.com/Audiveris/audiveris/releases) (gratuito): en Windows el
+   `…-windows-x86_64.msi`, en Mac el `.dmg` (arrástralo a Aplicaciones), en Linux el `.deb` o Flatpak.
+2. Abre la aplicación con **«Iniciar (Windows).bat»** o **«Iniciar (Mac-Linux).command»**: el servidor local
+   busca Audiveris solo (`C:\Program Files\Audiveris`, `/Applications/Audiveris.app`, `/opt/audiveris`, Flatpak…).
+   Si está en otra carpeta, indica la ruta del programa en la variable de entorno `AUDIVERIS`.
+3. En «Transportar», carga el PDF y pulsa **Reconocer PDF**. El resultado se carga como MusicXML marcado como
+   «reconocido automáticamente».
+
+El reconocimiento comete errores (más en escaneos): compara la vista previa con el PDF y, si hace falta, descarga
+el «MusicXML reconocido», corrígelo en MuseScore y vuelve a cargarlo. Esto no funciona en la versión publicada en
+GitHub Pages (necesita Audiveris en tu ordenador). Alternativa sin Audiveris: MuseScore → Archivo → Importar PDF. Las percusiones sin altura no se transportan y
 las alteraciones de los ornamentos (trinos) no se recalculan.
 
 El grabado de la partitura lo hace [Verovio](https://www.verovio.org) (LGPL) y el PDF, jsPDF + svg2pdf.

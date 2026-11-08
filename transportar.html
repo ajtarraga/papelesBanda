@@ -25,8 +25,9 @@
   <main>
     <div id="t-dropzone" class="dropzone" role="button" tabindex="0">
       <input id="t-file" type="file" accept=".musicxml,.xml,.mxl,.pdf,application/pdf" multiple hidden>
-      <strong>Arrastra aquí los papeles (MusicXML)</strong>
-      <span>Archivos <code>.musicxml</code>, <code>.xml</code> o <code>.mxl</code> exportados desde MuseScore, Finale, Sibelius, Dorico…</span>
+      <strong>Arrastra aquí los papeles (MusicXML o PDF)</strong>
+      <span>Archivos <code>.musicxml</code>, <code>.xml</code> o <code>.mxl</code> exportados desde MuseScore, Finale, Sibelius, Dorico…
+        Los PDF se pueden reconocer con Audiveris (abriendo la aplicación con «Iniciar»).</span>
       <div class="dz-buttons"><button type="button" id="t-btn" class="primary">Elegir archivos</button></div>
     </div>
     <div id="t-status" class="status" hidden></div>
@@ -40,16 +41,7 @@
 
     <div id="t-works"></div>
 
-    <div class="card" id="t-pdf-help" hidden>
-      <h2>¿Tienes el papel solo en PDF?</h2>
-      <p>Un PDF es una imagen de la partitura: antes de transportarlo hay que <strong>reconocer la música</strong> (OMR) y
-        convertirla en MusicXML. Ese paso comete errores (notas, ritmos, matices…), así que conviene revisarlo:</p>
-      <ol>
-        <li>Abre el PDF en <strong>MuseScore</strong> (Archivo → Importar PDF) o en <strong>Audiveris</strong>, que son gratuitos.</li>
-        <li>Revisa y corrige lo que se haya reconocido mal.</li>
-        <li>Expórtalo como <strong>MusicXML</strong> y cárgalo aquí.</li>
-      </ol>
-    </div>
+    <div id="t-pdfs" hidden></div>
 
     <div class="toolbar" id="t-all" hidden>
       <button id="t-zip" class="primary">Descargar todo (ZIP con PDF y MusicXML)</button>
