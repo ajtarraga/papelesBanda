@@ -1,0 +1,3 @@
+Verovio 6.3.0 (https://www.verovio.org) — LGPL-3.0-or-later.
+Archivo sin modificar: verovio-toolkit-wasm.js (paquete npm "verovio").
+Texto de la licencia: https://www.gnu.org/licenses/lgpl-3.0.html

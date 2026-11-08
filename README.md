@@ -51,6 +51,27 @@ timbales, láminas…) con todas sus páginas. **Añadir también** mete papeles
 cuando la obra los tiene (por defecto, el flautín va con la flauta en Fl). Se pueden añadir, quitar y renombrar carpetas. En «Reparto» se puede
 cambiar al modo **automático** (una carpeta por voz, hasta el máximo de voces entre todas las obras).
 
+## Transportar papeles
+
+La página **Transportar** (`transportar.html`, enlazada desde la principal) transporta papeles en **MusicXML**
+(`.musicxml`, `.xml` o `.mxl`, exportados desde MuseScore, Finale, Sibelius, Dorico…):
+
+- Eliges el instrumento para el que está escrito y el de destino (p. ej. Bombardino en Do → Bombardino en Si♭):
+  se calcula el intervalo (aquí, 9ª mayor), la nueva armadura y las alteraciones accidentales de cada compás.
+  Si una armadura quedaría con más de 7 alteraciones, se escribe la enarmónica.
+- La **clave** pasa a la del instrumento de destino, o a la que elijas (Sol, Fa, Do en 1ª/3ª/4ª…), y se puede
+  subir o bajar una octava. Eligiendo el mismo instrumento se cambia solo la clave, sin cambiar el sonido.
+- Se cambian solo las alturas (notas, armaduras, alteraciones, cifrados), la clave y el nombre del instrumento.
+  **Matices, articulaciones, ligaduras, reguladores, textos, repeticiones, segno/coda, ensayos y demás señales se
+  conservan** tal cual.
+- Vista previa del original y del transportado, y descarga en **PDF** y **MusicXML** (o un ZIP con todos).
+
+Los PDF no se pueden transportar directamente: antes hay que reconocer la música (OMR) con MuseScore
+(Importar PDF) o Audiveris, revisarla y exportarla a MusicXML. Las percusiones sin altura no se transportan y
+las alteraciones de los ornamentos (trinos) no se recalculan.
+
+El grabado de la partitura lo hace [Verovio](https://www.verovio.org) (LGPL) y el PDF, jsPDF + svg2pdf.
+
 ## Reglas del reparto
 
 - En modo automático, para cada instrumento se busca el **máximo número de voces entre todas las obras**: si

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Transportar papeles</title>
+  <meta name="description" content="Transporta papeles de banda entre instrumentos y cambia la clave, manteniendo matices y señales.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">♪</span>
+      <div>
+        <h1>Transportar papeles</h1>
+        <p class="subtitle">Cambia el instrumento (tonalidad) y la clave conservando matices, articulaciones y señales</p>
+      </div>
+    </div>
+    <nav class="tabs">
+      <a class="tab" href="index.html">← Dividir guiones</a>
+      <span class="tab active">Transportar</span>
+    </nav>
+  </header>
+
+  <main>
+    <div id="t-dropzone" class="dropzone" role="button" tabindex="0">
+      <input id="t-file" type="file" accept=".musicxml,.xml,.mxl,.pdf,application/pdf" multiple hidden>
+      <strong>Arrastra aquí los papeles (MusicXML)</strong>
+      <span>Archivos <code>.musicxml</code>, <code>.xml</code> o <code>.mxl</code> exportados desde MuseScore, Finale, Sibelius, Dorico…</span>
+      <div class="dz-buttons"><button type="button" id="t-btn" class="primary">Elegir archivos</button></div>
+    </div>
+    <div id="t-status" class="status" hidden></div>
+
+    <div class="help">
+      <p>Elige el instrumento para el que está escrito el papel y el instrumento de destino: se calcula el intervalo
+        (por ejemplo, Bombardino en Do → Bombardino en Si♭ sube una 9ª mayor), la nueva armadura y las alteraciones.
+        La clave cambia a la del instrumento de destino, o a la que elijas. Matices, articulaciones, ligaduras,
+        reguladores, textos, repeticiones, ensayos y demás señales se conservan tal cual.</p>
+    </div>
+
+    <div id="t-works"></div>
+
+    <div class="card" id="t-pdf-help" hidden>
+      <h2>¿Tienes el papel solo en PDF?</h2>
+      <p>Un PDF es una imagen de la partitura: antes de transportarlo hay que <strong>reconocer la música</strong> (OMR) y
+        convertirla en MusicXML. Ese paso comete errores (notas, ritmos, matices…), así que conviene revisarlo:</p>
+      <ol>
+        <li>Abre el PDF en <strong>MuseScore</strong> (Archivo → Importar PDF) o en <strong>Audiveris</strong>, que son gratuitos.</li>
+        <li>Revisa y corrige lo que se haya reconocido mal.</li>
+        <li>Expórtalo como <strong>MusicXML</strong> y cárgalo aquí.</li>
+      </ol>
+    </div>
+
+    <div class="toolbar" id="t-all" hidden>
+      <button id="t-zip" class="primary">Descargar todo (ZIP con PDF y MusicXML)</button>
+    </div>
+  </main>
+
+  <script src="vendor/jszip.min.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/svg2pdf.umd.min.js"></script>
+  <script src="js/instruments.js"></script>
+  <script src="js/transpose.js"></script>
+  <script src="vendor/verovio-toolkit-wasm.js"></script>
+  <script src="js/transposer-app.js"></script>
+</body>
+</html>

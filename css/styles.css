@@ -250,3 +250,19 @@ table.inst .warn { color: var(--falta-b); font-size: 12px; }
 .unused { margin-top: 14px; padding: 10px 14px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); font-size: 13.5px; }
 .inline-field { flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
 .inline-field select { padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); max-width: 100%; }
+
+/* ---------- Transportar ---------- */
+a.tab { text-decoration: none; color: inherit; display: inline-block; }
+.work-title { font-size: 17px; }
+.t-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 14px; margin-top: 8px; }
+.t-grid .field { margin: 6px 0; }
+.t-grid select, .t-grid input { padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); width: 100%; }
+.t-summary { margin: 8px 0; padding: 10px 12px; background: var(--surface-2); border-radius: 8px; font-size: 14px; display: grid; gap: 3px; }
+.t-summary .warn { color: var(--falta-b); }
+.t-preview { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: auto; max-height: 80vh; }
+.t-preview svg { width: 100%; height: auto; display: block; }
+.t-pager { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 14px; }
+.t-view { display: inline-flex; gap: 4px; margin-left: auto; }
+button.active-btn { background: var(--surface-2); border-color: var(--accent); }
+
+[hidden] { display: none !important; }

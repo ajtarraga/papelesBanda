@@ -37,7 +37,7 @@ jobs:
       - name: Preparar los archivos de la web
         run: |
           mkdir _site
-          cp -r index.html .nojekyll css js vendor _site/
+          cp -r index.html transportar.html .nojekyll css js vendor _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

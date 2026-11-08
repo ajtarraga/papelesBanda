@@ -4,7 +4,7 @@
   "private": true,
   "description": "Divide guiones de partituras en papeles por instrumento y reparte las voces que faltan",
   "scripts": {
-    "test": "node --test tests/unit.test.js",
+    "test": "node --test tests/unit.test.js tests/transpose.test.js",
     "start": "python3 -m http.server 8000"
   }
 }
