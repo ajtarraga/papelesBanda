@@ -5,7 +5,7 @@ const I = require('../js/instruments.js');
 const D = require('../js/distribute.js');
 
 const cat = I.DEFAULT_CATALOG;
-const det = (t) => I.detect(t, cat);
+const det = (t) => { const r = I.detect(t, cat); if (r && !r.solo) delete r.solo; return r; };
 
 test('detecta instrumento y voz', () => {
   assert.deepEqual(det('Clarinete 1º en Sib'), { id: 'clarinete', voices: [1] });
@@ -22,6 +22,21 @@ test('detecta instrumento y voz', () => {
   assert.deepEqual(det('Clarinete segundo'), { id: 'clarinete', voices: [2] });
   assert.deepEqual(det('Paso doble — Guion Director'), { id: I.IGNORE_ID, voices: [] });
   assert.equal(det('Allegro moderato'), null);
+  // Cabeceras en inglés tipo Hal Leonard (OCR)
+  assert.deepEqual(det('SOLO B♭ CLARINET'), { id: 'clarinete', voices: [], solo: true });
+  assert.deepEqual(det('Trompeta solista'), { id: 'trompeta', voices: [], solo: true });
+  assert.deepEqual(det('BARITONE T.C.'), { id: 'bombardino_sib', voices: [] });
+  assert.deepEqual(det('BARITONE B.C.'), { id: 'bombardino', voices: [] });
+  assert.deepEqual(det('E♭ ALTO CLARINET'), { id: 'clarinete_alto', voices: [] });
+  assert.deepEqual(det('E♭ BARITONE SAXOPHONE'), { id: 'saxo_baritono', voices: [] });
+  assert.deepEqual(det('MALLET PERCUSSION Bells'), { id: 'laminas', voices: [] });
+  assert.deepEqual(det('F HORN 2'), { id: 'trompa', voices: [2] });
+  assert.deepEqual(det(I.cleanOcr('B> CLARINET l')), { id: 'clarinete', voices: [1] });
+  assert.deepEqual(det('SOLO EP ALTO SAXOPHONE'), { id: 'saxo_alto', voices: [], solo: true });
+  assert.deepEqual(det('CINEMA PARADISO FHORN 1 By ENNIO'), { id: 'trompa', voices: [1] });
+  assert.deepEqual(det('BbCLARINET 2'), { id: 'clarinete', voices: [2] });
+  assert.deepEqual(det('Flautín'), { id: 'flautin', voices: [] });
+  assert.deepEqual(det('From CINEMA PARADISO CINEMA PARADISO SOLO OBOE By ENNIO MORRICONE'), { id: 'oboe', voices: [], solo: true });
 });
 
 test('interpreta voces', () => {
@@ -97,4 +112,24 @@ test('papel combinado 2-3', () => {
   const plan = D.computePlan(works, cat);
   assert.equal(plan.assignments.A['clarinete#3'].type, 'propio');
   assert.deepEqual(plan.assignments.A['clarinete#3'].part.voices, [2, 3]);
+});
+
+test('los solistas tienen carpeta propia y no se sustituyen', () => {
+  const works = [
+    { id: 'X', parts: [part('flauta~solo', []), part('flauta', [])] },
+    { id: 'A', parts: [part('flauta', [])] },
+  ];
+  const plan = D.computePlan(works, cat);
+  assert.deepEqual(plan.folders.map((f) => f.key), ['flauta', 'flauta~solo']);
+  assert.equal(plan.assignments.A['flauta~solo'].type, 'falta');
+});
+
+test('instrumento grave toma la voz más grave del sustituto', () => {
+  const works = [
+    { id: 'X', parts: [part('clarinete_bajo', [])] },
+    { id: 'A', parts: [1, 2, 3].map((v) => part('clarinete', [v])) },
+  ];
+  const plan = D.computePlan(works, cat);
+  assert.equal(plan.assignments.A.clarinete_bajo.fromInst, 'clarinete');
+  assert.deepEqual(plan.assignments.A.clarinete_bajo.part.voices, [3]);
 });

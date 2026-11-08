@@ -32,6 +32,8 @@
         <strong>Arrastra aquí los guiones en PDF</strong>
         <span>o haz clic para elegirlos (un PDF por obra, con los papeles seguidos)</span>
       </label>
+      <label class="check inline"><input type="checkbox" id="opt-ocr" checked>
+        Reconocer el texto de las páginas escaneadas (OCR) para detectar el instrumento</label>
       <div id="load-status" class="status" hidden></div>
 
       <div class="help" id="help-cargar">
@@ -111,6 +113,7 @@
   <script src="vendor/pdf.min.js"></script>
   <script src="vendor/pdf-lib.min.js"></script>
   <script src="vendor/jszip.min.js"></script>
+  <script src="vendor/tesseract/tesseract.min.js"></script>
   <script src="js/instruments.js"></script>
   <script src="js/distribute.js"></script>
   <script src="js/app.js"></script>

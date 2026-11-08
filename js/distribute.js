@@ -49,7 +49,11 @@
     const folders = [];
     let order = 0;
     const known = new Set(catalog.map((c) => c.id));
-    const ordered = catalog.map((c) => c.id).concat(Object.keys(maxVoices).filter((id) => !known.has(id)).sort());
+    // Los papeles solistas (id~solo) van justo después de su instrumento.
+    const ordered = [];
+    for (const c of catalog) ordered.push(c.id, `${c.id}~solo`);
+    for (const id of Object.keys(maxVoices).sort()) if (!ordered.includes(id)) ordered.push(id);
+    void known;
     for (const id of ordered) {
       const max = maxVoices[id];
       if (!max) continue;
@@ -65,7 +69,10 @@
    * Reparte equilibradamente las fuentes entre las carpetas objetivo.
    */
   function balance(targets, sources, opts) {
-    const { maxTarget, maxSource, usage, usagePrefix, initialLoad } = opts;
+    const { maxTarget, maxSource, usage, usagePrefix, initialLoad, preferLow } = opts;
+    // Instrumento grave: su voz 1 se empareja con la voz más grave disponible del sustituto.
+    const srcTop = Math.max.apply(null, sources.map(maxVoiceOf));
+    const wanted = (t) => (preferLow ? srcTop - ((t.voice || 1) - 1) : (t.voice || 1));
     const result = new Map();
     // Un papel único (sin número) vale para todas las voces.
     const unique = sources.find((s) => !s.voices || !s.voices.length);
@@ -75,7 +82,7 @@
     }
     const load = new Map(sources.map((s) => [s, initialLoad ? initialLoad(s) : 0]));
     for (const t of targets) {
-      const posT = position(t.voice || 1, maxTarget);
+      const posT = preferLow ? 1 - position(t.voice || 1, maxTarget) : position(t.voice || 1, maxTarget);
       let best = null;
       let bestScore = null;
       for (const s of sources) {
@@ -84,7 +91,7 @@
         const score = [
           load.get(s), // equilibrio dentro de la obra
           usage[uKey] || 0, // rotación entre obras
-          Math.abs((t.voice || 1) - mean), // misma voz o la más cercana
+          Math.abs(wanted(t) - mean), // misma voz o la más cercana
           Math.abs(posT - partPosition(s, maxSource)), // posición relativa
           maxVoiceOf(s),
         ];
@@ -164,6 +171,7 @@
             maxSource: maxVoices[cand] || 1,
             usage,
             usagePrefix: `${inst}>${cand}:`,
+            preferLow: !!(byId[inst] && byId[inst].low),
           });
           for (const t of targets) a[t.key] = { type: 'familia', part: res.get(t.key), fromInst: cand };
         } else {

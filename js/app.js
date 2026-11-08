@@ -4,7 +4,7 @@
 
   const I = Instruments;
   const D = Distribute;
-  const STORAGE_KEY = 'papelesBanda.catalog.v1';
+  const STORAGE_KEY = 'papelesBanda.catalog.v2';
 
   // ---------- pdf.js ----------
   // Con file:// los Web Workers no se pueden cargar; en ese caso pdf.js trabaja en el hilo principal.
@@ -76,6 +76,7 @@
 
   function instName(id) {
     if (id === I.IGNORE_ID) return 'Ignorar';
+    if (id && id.endsWith('~solo')) return `${instName(id.slice(0, -5))} solista`;
     const c = instById(id);
     return c ? c.name : id;
   }
@@ -91,6 +92,7 @@
 
   function hueFor(id) {
     if (!id) return 'transparent';
+    if (id.endsWith('~solo')) id = id.slice(0, -5);
     if (id === I.IGNORE_ID) return '#999';
     let x = 0;
     for (const ch of id) x = (x * 31 + ch.charCodeAt(0)) % 360;
@@ -137,12 +139,12 @@
     const status = $('#load-status');
     for (let i = 0; i < pdfs.length; i++) {
       const f = pdfs[i];
-      setStatus(status, `Leyendo «${f.name}» (${i + 1} de ${pdfs.length})…`);
+      const prefix = `«${f.name}» (${i + 1} de ${pdfs.length})`;
+      setStatus(status, `Leyendo ${prefix}…`);
       try {
-        const work = await loadWork(f);
+        const work = await loadWork(f, (msg) => setStatus(status, `${prefix}: ${msg}`));
         state.works.push(work);
         renderWorks();
-        renderThumbs(work);
       } catch (err) {
         console.error(err);
         setStatus(status, `No se pudo leer «${f.name}»: ${err.message || err}`, true);
@@ -152,7 +154,172 @@
     setStatus(status, '');
   }
 
-  async function loadWork(file) {
+  // ---------- OCR (páginas escaneadas) ----------
+  let ocrPromise = null;
+
+  function getOcr() {
+    if (ocrPromise) return ocrPromise;
+    ocrPromise = (async () => {
+      if (typeof Tesseract === 'undefined') throw new Error('No se pudo cargar el OCR');
+      // Con file:// el navegador no deja cargar los archivos locales del OCR: se usan desde internet.
+      const local = location.protocol !== 'file:';
+      const base = new URL('vendor/tesseract/', location.href).href;
+      const opts = local
+        ? { workerPath: base + 'worker.min.js', corePath: base + 'core', langPath: base + 'lang' }
+        : { workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
+          corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
+          langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int' };
+      const langs = local ? 'eng+spa' : 'eng';
+      const scheduler = Tesseract.createScheduler();
+      const n = Math.max(1, Math.min(3, (navigator.hardwareConcurrency || 2) - 1));
+      for (let i = 0; i < n; i++) {
+        const worker = await Tesseract.createWorker(langs, 1, opts);
+        await worker.setParameters({ tessedit_pageseg_mode: '11', user_defined_dpi: '300' });
+        scheduler.addWorker(worker);
+      }
+      return scheduler;
+    })();
+    ocrPromise.catch(() => { ocrPromise = null; });
+    return ocrPromise;
+  }
+
+  // ---------- Análisis de páginas ----------
+  const STAFF_SCORE_MIN = 55; // líneas de pentagrama (normalizado) a partir de las que es partitura general
+  const DUP_MIN_SIM = 0.7; // similitud a partir de la que una página es copia de otra
+
+  function grayData(canvas, w, h, sx, sy, sw, sh) {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, w, h);
+    const d = ctx.getImageData(0, 0, w, h).data;
+    const g = new Float32Array(w * h);
+    for (let i = 0; i < g.length; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    return g;
+  }
+
+  // Cuenta líneas de pentagrama por franjas verticales (tolera escaneos torcidos).
+  function countStaffLines(canvas) {
+    const H = 1100;
+    const W = Math.max(200, Math.round((H * canvas.width) / canvas.height));
+    const g = grayData(canvas, W, H, 0, 0, canvas.width, canvas.height);
+    const counts = [];
+    const strips = 8;
+    for (let k = 0; k < strips; k++) {
+      const x0 = Math.floor(W * (0.1 + (0.8 * k) / strips));
+      const x1 = Math.floor(W * (0.1 + (0.8 * (k + 1)) / strips));
+      let runs = 0;
+      let prev = false;
+      for (let y = 0; y < H; y++) {
+        let dark = 0;
+        for (let x = x0; x < x1; x++) if (g[y * W + x] < 150) dark++;
+        const on = dark / (x1 - x0) > 0.6;
+        if (on && !prev) runs++;
+        prev = on;
+      }
+      counts.push(runs);
+    }
+    counts.sort((a, b) => a - b);
+    return counts[Math.floor(strips / 2)];
+  }
+
+  // Huella de la zona de música para reconocer copias repetidas del mismo papel.
+  function fingerprint(canvas) {
+    const sx = canvas.width * 0.05;
+    const sy = canvas.height * 0.18;
+    const sw = canvas.width * 0.9;
+    const sh = canvas.height * 0.67;
+    const w = 150;
+    const h = Math.round((w * sh) / sw);
+    const g = grayData(canvas, w, h, sx, sy, sw, sh);
+    for (let i = 0; i < g.length; i++) g[i] = 255 - g[i];
+    return { w, h, data: g };
+  }
+
+  function similarity(a, b) {
+    if (!a || !b || a.w !== b.w || Math.abs(a.h - b.h) > 2) return 0;
+    const s = 3;
+    const W = a.w;
+    const H = Math.min(a.h, b.h);
+    const n = (W - 2 * s) * (H - 2 * s);
+    const stats = (arr, dx, dy) => {
+      let sum = 0;
+      let sq = 0;
+      for (let y = s; y < H - s; y++) {
+        for (let x = s; x < W - s; x++) {
+          const v = arr[(y + dy) * W + x + dx];
+          sum += v;
+          sq += v * v;
+        }
+      }
+      const mean = sum / n;
+      return { mean, std: Math.sqrt(Math.max(1e-6, sq / n - mean * mean)) };
+    };
+    const sb = stats(b.data, 0, 0);
+    let best = -1;
+    for (let dy = -s; dy <= s; dy++) {
+      for (let dx = -s; dx <= s; dx++) {
+        const sa = stats(a.data, dx, dy);
+        let acc = 0;
+        for (let y = s; y < H - s; y++) {
+          for (let x = s; x < W - s; x++) {
+            acc += (a.data[(y + dy) * W + x + dx] - sa.mean) * (b.data[y * W + x] - sb.mean);
+          }
+        }
+        best = Math.max(best, acc / n / (sa.std * sb.std));
+      }
+    }
+    return best;
+  }
+
+  function pageSimilarity(work, i, j) {
+    const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+    if (!(key in work.simCache)) work.simCache[key] = similarity(work.pages[i].fp, work.pages[j].fp);
+    return work.simCache[key];
+  }
+
+  async function analyzePage(page, needOcr) {
+    const vp0 = page.getViewport({ scale: 1 });
+    const target = needOcr ? 2000 : 1000;
+    const vp = page.getViewport({ scale: target / Math.min(vp0.width, vp0.height) });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(vp.width);
+    canvas.height = Math.ceil(vp.height);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+
+    const tw = 220;
+    const thumbCanvas = document.createElement('canvas');
+    thumbCanvas.width = tw;
+    thumbCanvas.height = Math.round((tw * canvas.height) / canvas.width);
+    const tctx = thumbCanvas.getContext('2d');
+    tctx.imageSmoothingQuality = 'high';
+    tctx.drawImage(canvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
+
+    let band = null;
+    if (needOcr) {
+      // Franja superior, donde suele estar el nombre del instrumento.
+      band = document.createElement('canvas');
+      band.width = canvas.width;
+      band.height = Math.round(canvas.height * 0.22);
+      band.getContext('2d').drawImage(canvas, 0, 0);
+    }
+    return {
+      thumb: thumbCanvas.toDataURL('image/jpeg', 0.75),
+      staves: countStaffLines(canvas),
+      fp: fingerprint(canvas),
+      band,
+    };
+  }
+
+  async function loadWork(file, progress) {
     const data = new Uint8Array(await file.arrayBuffer());
     const pdf = await pdfjsLib.getDocument({ data: data.slice() }).promise;
     const work = {
@@ -164,11 +331,50 @@
       numPages: pdf.numPages,
       pages: [],
       expanded: false,
+      simCache: {},
+      ocrUsed: false,
+      ocrError: null,
     };
+    const wantOcr = $('#opt-ocr').checked;
+    let scheduler = null;
+    const ocrJobs = [];
+    let ocrDone = 0;
     for (let p = 1; p <= pdf.numPages; p++) {
+      progress(`página ${p} de ${pdf.numPages}`);
       const page = await pdf.getPage(p);
       const texts = await pageTexts(page);
-      work.pages.push({ inst: null, voices: [], src: 'heredado', thumb: null, texts });
+      const hasText = texts.all.replace(/\s/g, '').length >= 15;
+      let needOcr = wantOcr && !hasText && !work.ocrError;
+      if (needOcr && !scheduler) {
+        try {
+          progress('preparando el reconocimiento de texto (OCR)…');
+          scheduler = await getOcr();
+        } catch (e) {
+          console.warn(e);
+          work.ocrError = location.protocol === 'file:'
+            ? 'No se pudo activar el OCR: abriendo el archivo directamente hace falta conexión a internet. ' +
+              'Usa la versión publicada (GitHub Pages) o «Iniciar» para trabajar sin conexión.'
+            : `No se pudo activar el OCR (${e.message || e}).`;
+          needOcr = false;
+        }
+      }
+      const a = await analyzePage(page, needOcr);
+      const pg = { inst: null, voices: [], solo: false, src: 'heredado', thumb: a.thumb, texts, staves: a.staves, fp: a.fp,
+        score: false, notDup: false, dupOf: null };
+      work.pages.push(pg);
+      if (needOcr) {
+        work.ocrUsed = true;
+        ocrJobs.push(scheduler.addJob('recognize', a.band).then((r) => {
+          pg.texts.top = I.cleanOcr(r.data.text);
+          ocrDone++;
+          progress(`reconociendo texto ${ocrDone} de ${ocrJobs.length}`);
+        }).catch((e) => console.warn('OCR', e)));
+      }
+      page.cleanup();
+    }
+    if (ocrJobs.length) {
+      progress(`reconociendo texto ${ocrDone} de ${ocrJobs.length}`);
+      await Promise.all(ocrJobs);
     }
     redetect(work);
     work.expanded = work.pages.some((pg) => !pg.inst);
@@ -203,28 +409,61 @@
     return { top: join(top), bottom: join(bottom), all: join(items.slice()) };
   }
 
-  function detectPage(texts) {
-    // Una página con muchos instrumentos distintos es la partitura general (guion de director).
-    if (I.detectAll(texts.all, state.catalog, matchers).length >= 5) return { id: I.IGNORE_ID, voices: [] };
-    return I.detect(texts.top, state.catalog, matchers) || I.detect(texts.bottom, state.catalog, matchers);
+  function pageCandidates(texts) {
+    const c = I.detectCandidates(texts.top, state.catalog, matchers);
+    return c.length ? c : I.detectCandidates(texts.bottom, state.catalog, matchers);
   }
 
   function redetect(work) {
-    let prev = { inst: null, voices: [] };
-    for (const pg of work.pages) {
-      if (pg.src === 'manual') { prev = pg; continue; }
-      const d = detectPage(pg.texts);
+    const n = work.pages.length;
+    // Partitura general (guion de director): muchas líneas de pentagrama o muchos instrumentos nombrados.
+    work.pages.forEach((pg) => {
+      pg.score = pg.staves >= STAFF_SCORE_MIN || I.detectAll(pg.texts.all, state.catalog, matchers).length >= 7;
+    });
+    const cands = work.pages.map((pg) => (pg.score ? [] : pageCandidates(pg.texts)));
+    // Un instrumento que aparece en casi todas las páginas suele ser parte del título de la obra.
+    const freq = {};
+    cands.forEach((c) => new Set(c.map((x) => x.id)).forEach((id) => { freq[id] = (freq[id] || 0) + 1; }));
+    const isTitle = (id) => n >= 4 && freq[id] / n > 0.6;
+
+    // Palabras del título de la obra: aparecen en la cabecera de la mayoría de las primeras páginas.
+    const wordsOf = (t) => new Set(I.normalize(t).split(' ').filter((x) => x.length >= 4 && !/\d/.test(x)));
+    const headed = work.pages.filter((pg, i) => cands[i].length && !pg.score);
+    const wc = {};
+    headed.forEach((pg) => wordsOf(pg.texts.top).forEach((x) => { wc[x] = (wc[x] || 0) + 1; }));
+    const titleWords = headed.length >= 3 ? Object.keys(wc).filter((x) => wc[x] / headed.length >= 0.6) : [];
+    const looksLikeFirstPage = (pg) => {
+      if (titleWords.length < 2) return false;
+      const ws = wordsOf(pg.texts.top);
+      return titleWords.filter((x) => ws.has(x)).length / titleWords.length >= 0.6;
+    };
+
+    let prev = { inst: null, voices: [], solo: false };
+    work.pages.forEach((pg, i) => {
+      pg.unknownStart = false;
+      if (pg.src === 'manual') { prev = pg; return; }
+      const c = cands[i];
+      const d = pg.score ? { id: I.IGNORE_ID, voices: [], solo: false } : (c.find((x) => !isTitle(x.id)) || c[0]);
       if (d) {
         pg.inst = d.id;
         pg.voices = d.voices;
+        pg.solo = !!d.solo;
         pg.src = 'auto';
+      } else if (looksLikeFirstPage(pg)) {
+        // Empieza un papel (tiene el título) pero no se ha podido leer el instrumento: no heredar.
+        pg.inst = null;
+        pg.voices = [];
+        pg.solo = false;
+        pg.src = 'auto';
+        pg.unknownStart = true;
       } else {
         pg.inst = prev.inst;
         pg.voices = prev.voices.slice();
+        pg.solo = prev.solo;
         pg.src = 'heredado';
       }
       prev = pg;
-    }
+    });
   }
 
   // Propaga un cambio a las páginas heredadas siguientes.
@@ -235,21 +474,46 @@
       if (pg.src !== 'heredado') break;
       pg.inst = src.inst;
       pg.voices = src.voices.slice();
+      pg.solo = src.solo;
     }
   }
 
-  // Papeles = tramos de páginas consecutivas con el mismo instrumento y voz.
+  /*
+   * Papeles = tramos de páginas consecutivas con el mismo instrumento y voz.
+   * Si una página con cabecera repite un papel ya visto y su música es casi idéntica,
+   * es una copia (se descarta junto con las páginas que la siguen sin cabecera).
+   */
   function getParts(work) {
     const parts = [];
+    const firstPart = {};
     let cur = null;
+    let inDup = null;
     work.pages.forEach((pg, i) => {
-      if (!pg.inst || pg.inst === I.IGNORE_ID) { cur = null; return; }
-      const key = pg.inst + '|' + pg.voices.join(',');
+      pg.dupOf = null;
+      if (!pg.inst || pg.inst === I.IGNORE_ID) { cur = null; inDup = null; return; }
+      const key = pg.inst + '|' + pg.voices.join(',') + (pg.solo ? '|solo' : '');
+      const header = pg.src !== 'heredado';
+      if (!header && inDup !== null) { pg.dupOf = inDup; return; }
+      if (header) {
+        inDup = null;
+        const orig = firstPart[key];
+        if (orig && !pg.notDup && pageSimilarity(work, orig.pages[0], i) >= DUP_MIN_SIM) {
+          pg.dupOf = orig.pages[0];
+          inDup = orig.pages[0];
+          orig.copies++;
+          cur = null;
+          return;
+        }
+      }
       if (cur && cur.key === key && cur.pages[cur.pages.length - 1] === i - 1) {
         cur.pages.push(i);
       } else {
-        cur = { id: `${work.id}:${i}`, key, inst: pg.inst, voices: pg.voices.slice(), pages: [i] };
+        cur = {
+          id: `${work.id}:${i}`, key, baseInst: pg.inst, solo: pg.solo,
+          inst: pg.solo ? `${pg.inst}~solo` : pg.inst, voices: pg.voices.slice(), pages: [i], copies: 1,
+        };
         parts.push(cur);
+        if (!firstPart[key]) firstPart[key] = cur;
       }
     });
     return parts;
@@ -275,18 +539,27 @@
       h('div', { class: 'work-actions' },
         h('button', { class: 'icon', title: 'Subir', disabled: wi === 0, onclick: () => moveWork(wi, -1) }, '↑'),
         h('button', { class: 'icon', title: 'Bajar', disabled: wi === state.works.length - 1, onclick: () => moveWork(wi, 1) }, '↓'),
-        h('button', { onclick: () => { w.expanded = !w.expanded; renderWorks(); renderThumbs(w); } },
+        h('button', { onclick: () => { w.expanded = !w.expanded; renderWorks(); } },
           w.expanded ? 'Ocultar páginas' : 'Revisar páginas'),
         h('button', { class: 'ghost', title: 'Volver a detectar todas las páginas (descarta cambios a mano)',
-          onclick: () => { w.pages.forEach((p) => { p.src = 'auto'; }); redetect(w); renderWorks(); renderThumbs(w); } }, 'Redetectar'),
+          onclick: () => { w.pages.forEach((p) => { p.src = 'auto'; p.notDup = false; }); redetect(w); renderWorks(); } }, 'Redetectar'),
         h('button', { class: 'ghost', title: 'Quitar obra', onclick: () => removeWork(wi) }, 'Quitar')));
     card.appendChild(head);
 
     const chips = h('div', { class: 'chips' },
       parts.map((p) => h('span', { class: 'chip', style: `border-color:${hueFor(p.inst)}` },
-        partLabel(p.inst, p.voices), ' ', h('span', { class: 'n' }, `(${p.pages.length})`))));
+        partLabel(p.inst, p.voices), ' ',
+        h('span', { class: 'n' }, `(${p.pages.length} pág${p.pages.length > 1 ? 's' : ''}${p.copies > 1 ? ` · ${p.copies} copias` : ''})`))));
     if (!parts.length) chips.appendChild(h('span', { class: 'chip' }, 'Ningún papel detectado: revisa las páginas'));
     card.appendChild(chips);
+    const notes = [];
+    if (w.ocrUsed) notes.push('PDF escaneado: el instrumento se ha leído con OCR, revisa las páginas.');
+    if (w.ocrError) notes.push(w.ocrError);
+    const nScore = w.pages.filter((p) => p.score && p.inst === I.IGNORE_ID).length;
+    if (nScore) notes.push(`${nScore} página${nScore > 1 ? 's' : ''} de partitura general ignorada${nScore > 1 ? 's' : ''}.`);
+    const nDup = w.pages.filter((p) => p.dupOf !== null && p.dupOf !== undefined).length;
+    if (nDup) notes.push(`${nDup} página${nDup > 1 ? 's' : ''} con copias repetidas descartada${nDup > 1 ? 's' : ''}.`);
+    if (notes.length) card.appendChild(h('div', { class: 'work-notes' }, notes.map((t) => h('div', null, t))));
 
     if (w.expanded) {
       const grid = h('div', { class: 'pages' });
@@ -303,30 +576,45 @@
     return opts;
   }
 
+  function voiceText(pg) {
+    return [I.formatVoices(pg.voices), pg.solo ? 'solo' : ''].filter(Boolean).join(' ');
+  }
+
   function renderPage(w, pg, i) {
-    const thumb = pg.thumb
-      ? h('img', { class: 'thumb', src: pg.thumb, alt: `Página ${i + 1}`, onclick: () => openModal(w, i) })
-      : h('div', { class: 'thumb placeholder', onclick: () => openModal(w, i) }, 'cargando…');
-    const srcText = { auto: 'detectado', heredado: 'heredado', manual: 'a mano' }[pg.src] || '';
-    const el = h('div', { class: 'page' + (pg.inst === I.IGNORE_ID ? ' ignored' : ''), 'data-page': i, style: `--hue:${hueFor(pg.inst)}` },
+    const thumb = h('img', { class: 'thumb', src: pg.thumb, alt: `Página ${i + 1}`, onclick: () => openModal(w, i) });
+    let srcText = { auto: 'detectado', heredado: 'heredado', manual: 'a mano' }[pg.src] || '';
+    if (pg.src === 'auto' && pg.score) srcText = 'partitura general';
+    if (pg.unknownStart) srcText = 'sin reconocer';
+    const isDup = pg.dupOf !== null && pg.dupOf !== undefined;
+    const classes = ['page'];
+    if (pg.inst === I.IGNORE_ID || isDup) classes.push('ignored');
+    const el = h('div', { class: classes.join(' '), 'data-page': i, style: `--hue:${hueFor(pg.inst)}` },
       thumb,
       h('div', { class: 'page-top' }, h('span', null, `Pág. ${i + 1}`), h('span', { class: `src ${pg.src}` }, srcText)),
+      isDup ? h('div', { class: 'dup' },
+        h('span', null, `Copia de la pág. ${pg.dupOf + 1}`),
+        pg.src !== 'heredado'
+          ? h('button', { class: 'link', title: 'Usar esta página como un papel distinto',
+            onclick: () => { pg.notDup = true; rerenderWork(w); } }, 'No es copia')
+          : null) : null,
       h('select', {
         'aria-label': `Instrumento de la página ${i + 1}`,
         onchange: (e) => {
           pg.inst = e.target.value || null;
-          if (pg.inst === I.IGNORE_ID) pg.voices = [];
+          if (pg.inst === I.IGNORE_ID) { pg.voices = []; pg.solo = false; }
           pg.src = 'manual';
           propagate(w, i);
           rerenderWork(w);
         },
       }, instOptions(pg.inst)),
       h('input', {
-        type: 'text', placeholder: 'Voz (vacío = único)', value: I.formatVoices(pg.voices),
+        type: 'text', placeholder: 'Voz (vacío = único)', value: voiceText(pg),
+        title: 'Ejemplos: 1 · 2-3 · 1 y 2 · solo · vacío = papel único',
         'aria-label': `Voz de la página ${i + 1}`,
         onchange: (e) => {
-          pg.voices = I.parseVoices(e.target.value);
-          e.target.value = I.formatVoices(pg.voices);
+          pg.solo = /\b(solo|solista)\b/i.test(e.target.value);
+          pg.voices = I.parseVoices(e.target.value.replace(/\b(solo|solista)\b/gi, ''));
+          e.target.value = voiceText(pg);
           pg.src = 'manual';
           propagate(w, i);
           rerenderWork(w);
@@ -357,40 +645,6 @@
     state.works.splice(i, 1);
     if (w.pdf) w.pdf.destroy();
     renderWorks();
-  }
-
-  // Miniaturas
-  const thumbQueue = [];
-  let thumbBusy = false;
-
-  function renderThumbs(work) {
-    work.pages.forEach((pg, i) => { if (!pg.thumb) thumbQueue.push([work, i]); });
-    pumpThumbs();
-  }
-
-  async function pumpThumbs() {
-    if (thumbBusy) return;
-    thumbBusy = true;
-    while (thumbQueue.length) {
-      const [work, i] = thumbQueue.shift();
-      const pg = work.pages[i];
-      if (pg.thumb || !state.works.includes(work)) continue;
-      try {
-        const page = await work.pdf.getPage(i + 1);
-        const vp0 = page.getViewport({ scale: 1 });
-        const vp = page.getViewport({ scale: 220 / vp0.width });
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.ceil(vp.width);
-        canvas.height = Math.ceil(vp.height);
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-        pg.thumb = canvas.toDataURL('image/jpeg', 0.7);
-        const tile = $(`[data-work="${work.id}"] [data-page="${i}"] .thumb`);
-        if (tile) tile.replaceWith(h('img', { class: 'thumb', src: pg.thumb, alt: `Página ${i + 1}`, onclick: () => openModal(work, i) }));
-      } catch (e) {
-        console.warn('miniatura', e);
-      }
-    }
-    thumbBusy = false;
   }
 
   // Vista ampliada
@@ -512,7 +766,7 @@
   $('#btn-export').addEventListener('click', exportZip);
 
   function safeName(s) {
-    return String(s).replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120) || 'sin nombre';
+    return String(s).replace(/♭/g, 'b').replace(/♯/g, '#').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120) || 'sin nombre';
   }
 
   // Helvetica estándar solo admite WinAnsi: sustituimos lo que no sepa dibujar.
@@ -663,7 +917,7 @@
     table.innerHTML = '';
     const tuningOpts = [['C', 'Do'], ['Bb', 'Si♭'], ['Eb', 'Mi♭'], ['F', 'Fa'], ['A', 'La'], ['perc', 'Percusión']];
     table.appendChild(h('thead', null, h('tr', null,
-      ['Instrumento', 'Familia', 'Afinación', 'Clave', 'Nombres en la cabecera', 'Sustitutos (por preferencia)', ''].map((t) => h('th', null, t)))));
+      ['Instrumento', 'Familia', 'Afinación', 'Clave', 'Grave', 'Nombres en la cabecera', 'Sustitutos (por preferencia)', ''].map((t) => h('th', null, t)))));
     const tbody = h('tbody');
     state.catalog.forEach((c, i) => {
       const subsInfo = h('div', { class: 'warn' });
@@ -674,6 +928,9 @@
           tuningOpts.map(([v, l]) => h('option', { value: v, selected: c.tuning === v }, l)))),
         h('td', null, h('select', { onchange: (e) => { c.clef = e.target.value; saveCatalog(); } },
           ['Sol', 'Fa', 'Do', 'Perc.'].map((v) => h('option', { value: v, selected: c.clef === v }, v)))),
+        h('td', null, h('input', { type: 'checkbox', checked: !!c.low, style: 'width:auto',
+          title: 'Si falta, toma la voz más grave del instrumento sustituto',
+          onchange: (e) => { c.low = e.target.checked; saveCatalog(); } })),
         h('td', null, h('textarea', {
           onchange: (e) => { c.aliases = e.target.value.split(',').map((s) => s.trim()).filter(Boolean); saveCatalog(); },
         }, (c.aliases || []).join(', '))),
@@ -717,5 +974,5 @@
   }
 
   // Exponer para pruebas automáticas
-  window.__papeles = { state, getParts, buildPlan };
+  window.__papeles = { state, getParts, buildPlan, redetect };
 })();
